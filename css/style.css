@@ -104,10 +104,11 @@ textarea { resize: vertical; }
 ════════════════════════════════════════════════ */
 #view-splash {
   position: fixed; inset: 0; z-index: 1000;
-  display: flex; align-items: center; justify-content: center;
+  align-items: center; justify-content: center;
   background: linear-gradient(160deg, var(--navy) 0%, var(--blue-d) 50%, var(--blue-m) 100%);
   overflow: hidden;
 }
+#view-splash.active { display: flex; }
 .splash-bg { position: absolute; inset: 0; overflow: hidden; }
 .splash-content {
   position: relative; z-index: 1;
@@ -155,9 +156,12 @@ textarea { resize: vertical; }
   position: relative; z-index: 1;
   background: var(--white);
   border-radius: 28px 28px 0 0;
-  padding: 28px 24px 40px;
+  padding: 28px 24px calc(40px + env(safe-area-inset-bottom));
   box-shadow: 0 -4px 40px rgba(3,4,94,0.2);
   width: 100%;
+  max-height: calc(100dvh - 80px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .auth-logo { width: 110px; margin: 0 auto 20px; display: block; }
@@ -1027,7 +1031,7 @@ textarea { resize: vertical; }
     justify-content: center;
     background: linear-gradient(135deg, var(--navy) 0%, var(--blue-d) 40%, var(--blue-m) 100%);
     min-height: 100vh;
-    padding: 40px 24px;
+    padding: 24px 16px;
     gap: 0;
   }
   .auth-bg { display: none; }
@@ -1037,13 +1041,16 @@ textarea { resize: vertical; }
     flex-direction: column;
     justify-content: center;
     background: var(--white);
-    width: min(380px, 45vw);
+    width: min(400px, 40vw);
     flex-shrink: 0;
-    padding: 48px 40px;
+    padding: 40px 32px;
     border-radius: 20px 0 0 20px;
     box-shadow: var(--shadow-lg);
     z-index: 1;
     position: relative;
+    max-height: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .auth-logo { width: 130px; margin: 0 auto 28px; display: block; }
   .auth-tabs { margin-bottom: 24px; }
@@ -1054,11 +1061,11 @@ textarea { resize: vertical; }
     align-items: center;
     justify-content: center;
     gap: 20px;
-    width: min(380px, 45vw);
+    width: min(400px, 40vw);
     flex-shrink: 0;
     border-radius: 0 20px 20px 0;
     background: linear-gradient(160deg, var(--blue-d) 0%, var(--blue-m) 50%, var(--cyan) 100%);
-    padding: 48px 36px;
+    padding: 40px 28px;
     position: relative;
     overflow: hidden;
     box-shadow: var(--shadow-lg);
@@ -1145,6 +1152,24 @@ textarea { resize: vertical; }
 }
 
 /* ════════════════════════════════════════════════
+   TABLET / SMALL DESKTOP (769px – 899px)
+   Auth em coluna única centralizada nessa faixa
+════════════════════════════════════════════════ */
+@media (min-width: 769px) and (max-width: 899px) {
+  #view-auth {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .auth-brand-panel { display: none !important; }
+  .auth-form-panel {
+    border-radius: 20px;
+    width: min(460px, 88%);
+    max-height: calc(100dvh - 48px);
+  }
+}
+
+/* ════════════════════════════════════════════════
    DESKTOP GRANDE (>= 1100px)
 ════════════════════════════════════════════════ */
 @media (min-width: 1100px) {
@@ -1152,4 +1177,6 @@ textarea { resize: vertical; }
   .profile-tab-content { grid-template-columns: repeat(5, 1fr); }
   .feed-container { max-width: 740px; }
   .couple-item { padding: 14px 18px; }
+  .auth-form-panel { padding: 48px 40px; }
+  .auth-brand-panel { padding: 48px 36px; }
 }
