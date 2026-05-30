@@ -134,8 +134,10 @@ textarea { resize: vertical; }
 .loader-dot:nth-child(3) { animation-delay: 0.4s; }
 
 /* ════════════════════════════════════════════════
-   AUTH — MOBILE
+   AUTH
 ════════════════════════════════════════════════ */
+
+/* ── MOBILE ─────────────────────────────────── */
 #view-auth {
   display: none;
   min-height: 100dvh;
@@ -149,9 +151,10 @@ textarea { resize: vertical; }
 #view-auth.active { display: flex; }
 
 .auth-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.auth-brand-panel { display: none; }
 
 /* Card branco sobe do rodapé no mobile */
-.auth-container {
+.auth-form-panel {
   position: relative; z-index: 1;
   background: var(--white);
   border-radius: 28px 28px 0 0;
@@ -160,7 +163,7 @@ textarea { resize: vertical; }
   width: 100%;
 }
 
-.auth-logo { width: 120px; margin: 0 auto 20px; }
+.auth-logo { width: 110px; margin: 0 auto 20px; display: block; }
 .auth-tabs {
   display: flex; background: var(--gray-2);
   border-radius: 12px; padding: 4px; margin-bottom: 20px;
@@ -183,42 +186,94 @@ textarea { resize: vertical; }
   font-size: 0.85rem; text-align: center;
 }
 
-/* ── AUTH DESKTOP ──────────────────────────── */
+/* ── DESKTOP: card flutuante dividido ────────── */
 @media (min-width: 769px) {
+
+  body { overflow: hidden; }
+
   #view-auth {
     flex-direction: row;
-    justify-content: stretch;
-    align-items: stretch;
-    min-height: 100vh;
-  }
-
-  /* Lado esquerdo: branding */
-  #view-auth::before {
-    content: '';
-    flex: 1;
-    background: linear-gradient(160deg, var(--navy) 0%, var(--blue-d) 55%, var(--blue-m) 100%);
-    display: flex;
     align-items: center;
     justify-content: center;
+    background: linear-gradient(135deg, var(--navy) 0%, var(--blue-d) 40%, var(--blue-m) 100%);
+    min-height: 100vh;
+    padding: 40px 24px;
   }
 
   .auth-bg { display: none; }
 
-  /* Lado direito: formulário */
-  .auth-container {
-    flex: 0 0 460px;
-    width: 460px;
-    border-radius: 0;
-    padding: 60px 48px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    box-shadow: -8px 0 40px rgba(3,4,94,0.2);
-    overflow-y: auto;
-    min-height: 100vh;
+  /* Card flutuante centralizado com duas colunas */
+  #view-auth > .auth-form-panel,
+  #view-auth > .auth-brand-panel {
+    /* reset */
+    all: unset;
   }
 
-  .auth-logo { width: 140px; margin: 0 auto 32px; }
+  /* Wrapper do card (usamos o auth-form-panel + brand-panel como flex row) */
+  #view-auth {
+    gap: 0;
+  }
+
+  /* Painel esquerdo: formulário branco */
+  .auth-form-panel {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--white);
+    width: 380px;
+    flex-shrink: 0;
+    padding: 48px 40px;
+    border-radius: 20px 0 0 20px;
+    box-shadow: var(--shadow-lg);
+    z-index: 1;
+    position: relative;
+  }
+
+  .auth-logo { width: 130px; margin: 0 auto 28px; display: block; }
+  .auth-tabs { margin-bottom: 24px; }
+
+  /* Painel direito: branding gradiente */
+  .auth-brand-panel {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    width: 380px;
+    flex-shrink: 0;
+    border-radius: 0 20px 20px 0;
+    background: linear-gradient(160deg, var(--blue-d) 0%, var(--blue-m) 50%, var(--cyan) 100%);
+    padding: 48px 36px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .auth-brand-waves { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .auth-brand-waves .wave { opacity: 0.2; }
+
+  .auth-brand-content {
+    position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+    text-align: center;
+  }
+
+  .auth-brand-logo { width: 160px; filter: drop-shadow(0 4px 20px rgba(0,0,0,0.2)); }
+  .auth-brand-mascot { width: 130px; }
+  .auth-brand-title {
+    color: var(--white);
+    font-size: 1.2rem;
+    font-weight: 900;
+    line-height: 1.3;
+  }
+  .auth-brand-sub {
+    color: var(--ice);
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.5;
+    opacity: 0.9;
+  }
 }
 
 /* ════════════════════════════════════════════════
