@@ -1,0 +1,165 @@
+/**
+ * PLUP — Feed Social
+ * Timeline de atividades dos casais seguidos
+ */
+
+const Feed = (() => {
+
+  // ── Carregar feed ─────────────────────────
+  // Busca atividades dos casais que meu casal segue + meu próprio casal
+  async function loadFeed(coupleId, limit = 30) {
+    const followingIds = await Couple.getFollowing(coupleId);
+    const allIds = [coupleId, ...followingIds];
+
+    // Firestore suporta 'in' com até 10 valores; se tiver mais, paginar
+    const chunks = [];
+    for (let i = 0; i < allIds.length; i += 10) {
+      chunks.push(allIds.slice(i, i + 10));
+    }
+
+    let events = [];
+    for (const chunk of chunks) {
+      const snap = await db.collection('feed')
+        .where('coupleId', 'in', chunk)
+        .orderBy('createdAt', 'desc')
+        .limit(limit)
+        .get();
+      snap.docs.forEach(d => events.push({ id: d.id, ...d.data() }));
+    }
+
+    // Ordenar por data
+    events.sort((a, b) => {
+      const ta = a.createdAt?.toMillis?.() || 0;
+      const tb = b.createdAt?.toMillis?.() || 0;
+      return tb - ta;
+    });
+
+    return events.slice(0, limit);
+  }
+
+  // ── Realtime feed (próprio casal) ─────────
+  function onOwnFeed(coupleId, callback) {
+    return db.collection('feed')
+      .where('coupleId', '==', coupleId)
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .onSnapshot(snap => {
+        callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+  }
+
+  // ── Renderizar card de feed ───────────────
+  async function renderFeedCard(event, coupleDoc, categoriesMap) {
+    const card = document.createElement('div');
+    card.className = 'feed-card';
+
+    // Buscar nomes dos membros do casal
+    const [u1, u2] = await Promise.all([
+      Auth.fetchUserDoc(coupleDoc.user1),
+      Auth.fetchUserDoc(coupleDoc.user2)
+    ]);
+
+    const names = `${u1?.name || '?'} & ${u2?.name || '?'}`;
+    const time = _timeAgo(event.createdAt?.toDate?.());
+
+    let actionText = '';
+    let starsHtml  = '';
+
+    switch (event.type) {
+      case 'watched':
+        actionText = '✅ assistiu a um filme!';
+        break;
+      case 'rated':
+        actionText = `⭐ avaliou com ${event.stars} estrela${event.stars !== 1 ? 's' : ''}`;
+        starsHtml  = `<div class="feed-card-stars">${_renderStars(event.stars)}</div>`;
+        break;
+      case 'movie_added':
+        actionText = '🎬 adicionou um filme à plataforma!';
+        break;
+      default:
+        actionText = '📌 fez algo legal';
+    }
+
+    const coverHtml = event.coverUrl
+      ? `<img class="feed-card-cover" src="${event.coverUrl}" alt="${event.movieTitle}" loading="lazy" />`
+      : `<div class="feed-card-cover" style="background:linear-gradient(135deg,var(--navy),var(--blue-m));display:flex;align-items:center;justify-content:center;font-size:3rem;">🎬</div>`;
+
+    card.innerHTML = `
+      <div class="feed-card-header">
+        <div class="feed-couple-avatars">
+          <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '👤'}</div>
+          <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '👤'}</div>
+        </div>
+        <div class="feed-card-couple">
+          <div class="feed-card-couple-name">${names}</div>
+          <div class="feed-card-time">${time}</div>
+        </div>
+      </div>
+      ${coverHtml}
+      <div class="feed-card-body">
+        <div class="feed-card-title">${event.movieTitle || ''}</div>
+        <div class="feed-card-action">${actionText}</div>
+        ${starsHtml}
+      </div>
+    `;
+
+    if (event.movieId) {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => {
+        window._app?.openMovieDetail?.(event.movieId);
+      });
+    }
+
+    return card;
+  }
+
+  // ── Render estrelas ───────────────────────
+  function _renderStars(val) {
+    let h = '';
+    for (let i = 1; i <= 5; i++) {
+      h += `<span class="${i <= val ? '' : 'empty'}">★</span>`;
+    }
+    return h;
+  }
+
+  // ── Time ago ──────────────────────────────
+  function _timeAgo(date) {
+    if (!date) return '';
+    const diff = (Date.now() - date.getTime()) / 1000;
+    if (diff < 60)   return 'agora mesmo';
+    if (diff < 3600) return `${Math.floor(diff/60)} min atrás`;
+    if (diff < 86400)return `${Math.floor(diff/3600)}h atrás`;
+    return `${Math.floor(diff/86400)}d atrás`;
+  }
+
+  // ── Notificações ─────────────────────────
+  function onNotifications(uid, callback) {
+    return db.collection('notifications')
+      .where('userId', '==', uid)
+      .orderBy('createdAt', 'desc')
+      .limit(30)
+      .onSnapshot(snap => {
+        const notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        callback(notifs);
+      });
+  }
+
+  async function markNotifRead(notifId) {
+    await db.collection('notifications').doc(notifId).update({ read: true });
+  }
+
+  async function markAllNotifsRead(uid) {
+    const snap = await db.collection('notifications')
+      .where('userId', '==', uid)
+      .where('read', '==', false)
+      .get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.update(d.ref, { read: true }));
+    await batch.commit();
+  }
+
+  return {
+    loadFeed, onOwnFeed, renderFeedCard,
+    onNotifications, markNotifRead, markAllNotifsRead
+  };
+})();

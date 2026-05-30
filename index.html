@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#03045E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Plup — Filmes em Casal</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       SPLASH SCREEN
+  ═══════════════════════════════════════════ -->
+  <div id="view-splash" class="view active">
+    <div class="splash-bg">
+      <div class="wave wave1"></div>
+      <div class="wave wave2"></div>
+      <div class="wave wave3"></div>
+    </div>
+    <div class="splash-content">
+      <img src="refs/logo.png" alt="Plup" class="splash-logo" />
+      <img src="refs/personagem.png" alt="Mascote" class="splash-mascot" />
+      <p class="splash-tagline">Filmes são melhores em dois 💙</p>
+      <div class="splash-loader">
+        <div class="loader-dot"></div>
+        <div class="loader-dot"></div>
+        <div class="loader-dot"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       AUTH — LOGIN / CADASTRO
+  ═══════════════════════════════════════════ -->
+  <div id="view-auth" class="view">
+    <div class="auth-bg">
+      <div class="wave wave1"></div>
+      <div class="wave wave2"></div>
+    </div>
+    <div class="auth-container">
+      <img src="refs/logo.png" alt="Plup" class="auth-logo" />
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Entrar</button>
+        <button class="auth-tab" data-tab="register">Cadastrar</button>
+      </div>
+
+      <!-- Login -->
+      <form id="form-login" class="auth-form active">
+        <div class="input-group">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="login-email" placeholder="E-mail" required autocomplete="email" />
+        </div>
+        <div class="input-group">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="login-password" placeholder="Senha" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Entrar</button>
+        <p class="auth-forgot"><a href="#" id="btn-forgot">Esqueci minha senha</a></p>
+      </form>
+
+      <!-- Register -->
+      <form id="form-register" class="auth-form">
+        <div class="input-group">
+          <span class="input-icon">👤</span>
+          <input type="text" id="reg-name" placeholder="Seu nome" required />
+        </div>
+        <div class="input-group">
+          <span class="input-icon">🐧</span>
+          <input type="text" id="reg-nickname" placeholder="@nickname (único)" required pattern="[a-zA-Z0-9_]{3,20}" />
+        </div>
+        <div class="input-group">
+          <span class="input-icon">✉️</span>
+          <input type="email" id="reg-email" placeholder="E-mail" required autocomplete="email" />
+        </div>
+        <div class="input-group">
+          <span class="input-icon">🔒</span>
+          <input type="password" id="reg-password" placeholder="Senha (mín. 6 caracteres)" required minlength="6" autocomplete="new-password" />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Criar conta</button>
+      </form>
+
+      <div id="auth-error" class="auth-error hidden"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       CONECTAR PARCEIRO
+  ═══════════════════════════════════════════ -->
+  <div id="view-connect" class="view">
+    <div class="page-header">
+      <img src="refs/logo.png" alt="Plup" class="header-logo" />
+    </div>
+    <div class="connect-container">
+      <img src="refs/personagem.png" alt="Mascote" class="connect-mascot" />
+      <h2>Conecte-se com seu parceiro(a)!</h2>
+      <p>Busque pelo @nickname ou compartilhe seu ID</p>
+
+      <div class="connect-my-id">
+        <span>Seu ID:</span>
+        <code id="my-user-id">—</code>
+        <button class="btn-copy" id="btn-copy-id" title="Copiar ID">📋</button>
+      </div>
+
+      <div class="input-group">
+        <span class="input-icon">🔍</span>
+        <input type="text" id="partner-search" placeholder="@nickname ou ID do parceiro" />
+      </div>
+      <button class="btn btn-primary btn-full" id="btn-search-partner">Buscar</button>
+
+      <div id="partner-result" class="partner-result hidden">
+        <div class="partner-card" id="partner-card">
+          <!-- preenchido por JS -->
+        </div>
+        <button class="btn btn-success btn-full" id="btn-send-invite">Enviar convite 💌</button>
+      </div>
+
+      <div id="connect-pending" class="connect-pending hidden">
+        <p>⏳ Convite enviado! Aguardando aceitação...</p>
+        <button class="btn btn-ghost btn-sm" id="btn-cancel-invite">Cancelar convite</button>
+      </div>
+
+      <div id="invites-received" class="invites-received">
+        <h3>Convites recebidos</h3>
+        <div id="invites-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       FEED PRINCIPAL
+  ═══════════════════════════════════════════ -->
+  <div id="view-feed" class="view">
+    <div class="top-bar">
+      <img src="refs/logo.png" alt="Plup" class="header-logo" />
+      <div class="top-bar-actions">
+        <button class="btn-icon" id="btn-notifications" title="Notificações">
+          🔔<span class="badge hidden" id="notif-badge">0</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="feed-container">
+      <!-- Perfil rápido do casal -->
+      <div class="couple-quick-card" id="couple-quick">
+        <div class="cqc-avatars">
+          <div class="avatar" id="cqc-avatar1">👤</div>
+          <div class="couple-heart">💙</div>
+          <div class="avatar" id="cqc-avatar2">👤</div>
+        </div>
+        <div class="cqc-info">
+          <div class="cqc-names" id="cqc-names">—</div>
+          <div class="couple-score-bar">
+            <div class="score-fill" id="score-fill" style="width:0%"></div>
+          </div>
+          <div class="cqc-score"><span id="cqc-score-val">0</span>/100 pts</div>
+        </div>
+      </div>
+
+      <!-- Stories/Destaques rápidos -->
+      <div class="quick-actions">
+        <button class="qa-btn" data-nav="movies">
+          <span class="qa-icon">🎬</span>
+          <span>Filmes</span>
+        </button>
+        <button class="qa-btn" data-nav="watchlist">
+          <span class="qa-icon">📋</span>
+          <span>Ver depois</span>
+        </button>
+        <button class="qa-btn" data-nav="favorites">
+          <span class="qa-icon">⭐</span>
+          <span>Favoritos</span>
+        </button>
+        <button class="qa-btn" data-nav="add-movie">
+          <span class="qa-icon">➕</span>
+          <span>Adicionar</span>
+        </button>
+      </div>
+
+      <!-- Feed de atividades -->
+      <div class="feed-section-title">O que estão assistindo 🍿</div>
+      <div id="feed-list" class="feed-list">
+        <div class="feed-empty">
+          <img src="refs/personagem2.png" alt="" class="empty-mascot" />
+          <p>Siga outros casais para ver o que estão assistindo!</p>
+          <button class="btn btn-primary" data-nav="discover">Descobrir casais</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       FILMES — CATÁLOGO
+  ═══════════════════════════════════════════ -->
+  <div id="view-movies" class="view">
+    <div class="top-bar">
+      <button class="btn-back" data-nav="feed">←</button>
+      <h2>Filmes</h2>
+      <button class="btn-icon" data-nav="add-movie" title="Adicionar filme">➕</button>
+    </div>
+
+    <div class="movies-container">
+      <!-- Busca + filtros -->
+      <div class="search-bar">
+        <span class="input-icon">🔍</span>
+        <input type="text" id="movies-search" placeholder="Buscar filme..." />
+      </div>
+
+      <!-- Filtro de categorias (chips) -->
+      <div class="category-chips" id="category-chips">
+        <button class="chip active" data-cat="all">Todos</button>
+        <!-- gerado por JS -->
+      </div>
+
+      <!-- Grid de filmes -->
+      <div class="movies-grid" id="movies-grid">
+        <!-- gerado por JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       DETALHE DO FILME
+  ═══════════════════════════════════════════ -->
+  <div id="view-movie-detail" class="view">
+    <div class="movie-detail-header">
+      <button class="btn-back-overlay" id="movie-back">←</button>
+      <img id="movie-cover-large" src="" alt="" class="movie-cover-large" />
+      <div class="movie-cover-overlay"></div>
+    </div>
+
+    <div class="movie-detail-body">
+      <div class="movie-detail-top">
+        <div>
+          <h1 id="movie-detail-title">—</h1>
+          <div class="movie-meta">
+            <span class="badge-cat" id="movie-detail-cat">—</span>
+            <span class="badge-age" id="movie-detail-age">—</span>
+          </div>
+        </div>
+        <div class="movie-detail-actions">
+          <button class="btn-icon-lg" id="btn-toggle-watchlist" title="Watchlist">📋</button>
+          <button class="btn-icon-lg" id="btn-toggle-favorite" title="Favoritar">⭐</button>
+        </div>
+      </div>
+
+      <p id="movie-detail-desc" class="movie-desc">—</p>
+
+      <!-- Avaliação do casal -->
+      <div class="rating-section">
+        <h3>Avaliação do casal</h3>
+        <div class="stars-input" id="stars-input">
+          <span class="star" data-val="1">★</span>
+          <span class="star" data-val="2">★</span>
+          <span class="star" data-val="3">★</span>
+          <span class="star" data-val="4">★</span>
+          <span class="star" data-val="5">★</span>
+        </div>
+        <div class="rating-display" id="rating-display">Sem avaliação ainda</div>
+        <button class="btn btn-primary" id="btn-rate-movie">Avaliar</button>
+        <button class="btn btn-success" id="btn-mark-watched">✅ Marcar como assistido</button>
+      </div>
+
+      <!-- Quem adicionou -->
+      <div class="movie-added-by" id="movie-added-by"></div>
+
+      <!-- Denunciar -->
+      <button class="btn btn-ghost btn-sm" id="btn-report-movie">🚩 Denunciar filme</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ADICIONAR FILME
+  ═══════════════════════════════════════════ -->
+  <div id="view-add-movie" class="view">
+    <div class="top-bar">
+      <button class="btn-back" id="add-movie-back">←</button>
+      <h2>Adicionar Filme</h2>
+    </div>
+
+    <div class="add-movie-container">
+      <!-- Upload de capa -->
+      <div class="cover-upload" id="cover-upload-area">
+        <input type="file" id="cover-file" accept="image/*" hidden />
+        <div class="cover-placeholder" id="cover-placeholder">
+          <span>🎬</span>
+          <p>Toque para adicionar a capa</p>
+        </div>
+        <img id="cover-preview" class="cover-preview hidden" src="" alt="Capa" />
+      </div>
+
+      <form id="form-add-movie">
+        <div class="input-group">
+          <span class="input-icon">📽️</span>
+          <input type="text" id="movie-title" placeholder="Título do filme" required />
+        </div>
+
+        <div class="input-group">
+          <span class="input-icon">📝</span>
+          <textarea id="movie-desc-input" placeholder="Descrição / sinopse" rows="3" required></textarea>
+        </div>
+
+        <div class="input-group">
+          <span class="input-icon">🏷️</span>
+          <select id="movie-category" required>
+            <option value="">Selecionar categoria</option>
+            <!-- gerado por JS -->
+          </select>
+        </div>
+
+        <div class="input-group">
+          <span class="input-icon">🔞</span>
+          <select id="movie-age" required>
+            <option value="">Classificação etária</option>
+            <!-- gerado por JS -->
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-full">Publicar Filme 🎬</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       WATCHLIST — VER DEPOIS
+  ═══════════════════════════════════════════ -->
+  <div id="view-watchlist" class="view">
+    <div class="top-bar">
+      <button class="btn-back" data-nav="feed">←</button>
+      <h2>📋 Ver Depois</h2>
+    </div>
+    <div class="list-container" id="watchlist-container">
+      <!-- gerado por JS -->
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       FAVORITOS
+  ═══════════════════════════════════════════ -->
+  <div id="view-favorites" class="view">
+    <div class="top-bar">
+      <button class="btn-back" data-nav="feed">←</button>
+      <h2>⭐ Favoritos</h2>
+    </div>
+    <div class="list-container" id="favorites-container">
+      <!-- gerado por JS -->
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       PERFIL DO CASAL
+  ═══════════════════════════════════════════ -->
+  <div id="view-profile" class="view">
+    <div class="profile-hero">
+      <div class="profile-hero-bg"></div>
+      <div class="profile-avatars">
+        <div class="avatar avatar-lg" id="profile-avatar1">👤</div>
+        <div class="couple-heart-lg">💙</div>
+        <div class="avatar avatar-lg" id="profile-avatar2">👤</div>
+      </div>
+      <h2 id="profile-couple-names">—</h2>
+      <p id="profile-couple-since">Casal desde —</p>
+    </div>
+
+    <div class="profile-score-card">
+      <div class="score-circle" id="profile-score-circle">
+        <span id="profile-score-num">0</span>
+        <small>pts</small>
+      </div>
+      <div class="score-stats">
+        <div class="stat"><span id="stat-watched">0</span><small>Assistidos</small></div>
+        <div class="stat"><span id="stat-favorites">0</span><small>Favoritos</small></div>
+        <div class="stat"><span id="stat-followers">0</span><small>Seguidores</small></div>
+      </div>
+    </div>
+
+    <!-- Abas do perfil -->
+    <div class="profile-tabs">
+      <button class="profile-tab active" data-ptab="watched">Assistidos</button>
+      <button class="profile-tab" data-ptab="favorites">Favoritos</button>
+      <button class="profile-tab" data-ptab="watchlist">Ver depois</button>
+    </div>
+
+    <div class="profile-tab-content" id="profile-tab-content">
+      <!-- gerado por JS -->
+    </div>
+
+    <!-- Ações do perfil -->
+    <div class="profile-actions" id="profile-own-actions">
+      <button class="btn btn-ghost" id="btn-disconnect-partner">💔 Desconectar parceiro</button>
+      <button class="btn btn-ghost btn-danger" id="btn-logout">Sair da conta</button>
+    </div>
+    <div class="profile-actions hidden" id="profile-other-actions">
+      <button class="btn btn-primary" id="btn-follow-couple">Seguir casal</button>
+      <button class="btn btn-ghost btn-sm" id="btn-report-couple">🚩 Denunciar</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       DESCOBRIR CASAIS
+  ═══════════════════════════════════════════ -->
+  <div id="view-discover" class="view">
+    <div class="top-bar">
+      <button class="btn-back" data-nav="feed">←</button>
+      <h2>🌊 Descobrir</h2>
+    </div>
+    <div class="discover-container">
+      <div class="search-bar">
+        <span class="input-icon">🔍</span>
+        <input type="text" id="discover-search" placeholder="Buscar casal por nickname..." />
+      </div>
+      <div class="discover-section-title">Casais em destaque</div>
+      <div id="discover-list" class="couples-list">
+        <!-- gerado por JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       CONFIGURAÇÕES
+  ═══════════════════════════════════════════ -->
+  <div id="view-settings" class="view">
+    <div class="top-bar">
+      <button class="btn-back" data-nav="feed">←</button>
+      <h2>⚙️ Configurações</h2>
+    </div>
+    <div class="settings-container">
+      <div class="settings-section">
+        <h3>Meu perfil</h3>
+        <div class="avatar-upload-section">
+          <div class="avatar avatar-xl" id="settings-avatar">👤</div>
+          <button class="btn btn-ghost btn-sm" id="btn-change-avatar">Alterar foto</button>
+          <input type="file" id="avatar-file" accept="image/*" hidden />
+        </div>
+        <div class="input-group">
+          <span class="input-icon">👤</span>
+          <input type="text" id="settings-name" placeholder="Nome" />
+        </div>
+        <div class="input-group">
+          <span class="input-icon">🐧</span>
+          <input type="text" id="settings-nickname" placeholder="@nickname" readonly />
+        </div>
+        <button class="btn btn-primary" id="btn-save-settings">Salvar</button>
+      </div>
+
+      <div class="settings-section">
+        <h3>Conta</h3>
+        <button class="btn btn-ghost btn-full" id="btn-settings-logout">🚪 Sair da conta</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       ADMIN PANEL
+  ═══════════════════════════════════════════ -->
+  <div id="view-admin" class="view">
+    <div class="top-bar">
+      <button class="btn-back" data-nav="feed">←</button>
+      <h2>🛡️ Admin</h2>
+    </div>
+    <div class="admin-container">
+
+      <!-- Tabs admin -->
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-atab="categories">Categorias</button>
+        <button class="admin-tab" data-atab="ages">Idades</button>
+        <button class="admin-tab" data-atab="reports">Denúncias</button>
+        <button class="admin-tab" data-atab="movies-mod">Filmes</button>
+        <button class="admin-tab" data-atab="score-config">Score</button>
+      </div>
+
+      <!-- Categorias -->
+      <div class="admin-panel active" id="admin-categories">
+        <h3>Categorias de filmes</h3>
+        <div class="input-row">
+          <input type="text" id="new-category-name" placeholder="Nome da categoria" />
+          <input type="text" id="new-category-icon" placeholder="Emoji" maxlength="2" />
+          <button class="btn btn-primary btn-sm" id="btn-add-category">Adicionar</button>
+        </div>
+        <div id="categories-list" class="admin-list"></div>
+      </div>
+
+      <!-- Classificações etárias -->
+      <div class="admin-panel" id="admin-ages">
+        <h3>Classificações etárias</h3>
+        <div class="input-row">
+          <input type="text" id="new-age-label" placeholder="Ex: Livre, 10+, 18+" />
+          <input type="color" id="new-age-color" value="#0077B6" />
+          <button class="btn btn-primary btn-sm" id="btn-add-age">Adicionar</button>
+        </div>
+        <div id="ages-list" class="admin-list"></div>
+      </div>
+
+      <!-- Denúncias -->
+      <div class="admin-panel" id="admin-reports">
+        <h3>Denúncias pendentes</h3>
+        <div id="reports-list" class="admin-list">
+          <p class="empty-text">Nenhuma denúncia pendente 🎉</p>
+        </div>
+      </div>
+
+      <!-- Moderação de filmes -->
+      <div class="admin-panel" id="admin-movies-mod">
+        <h3>Todos os filmes</h3>
+        <div id="admin-movies-list" class="admin-list"></div>
+      </div>
+
+      <!-- Configuração de score -->
+      <div class="admin-panel" id="admin-score-config">
+        <h3>Configuração de pontuação</h3>
+        <div class="score-config-form">
+          <div class="config-row">
+            <label>Pts por filme assistido</label>
+            <input type="number" id="cfg-pts-watched" min="0" max="100" value="5" />
+          </div>
+          <div class="config-row">
+            <label>Pts por avaliação</label>
+            <input type="number" id="cfg-pts-rating" min="0" max="100" value="2" />
+          </div>
+          <div class="config-row">
+            <label>Pts por favorito</label>
+            <input type="number" id="cfg-pts-favorite" min="0" max="100" value="1" />
+          </div>
+          <div class="config-row">
+            <label>Pts máximos (cap)</label>
+            <input type="number" id="cfg-max-score" min="10" max="1000" value="100" />
+          </div>
+          <button class="btn btn-primary" id="btn-save-score-config">Salvar configuração</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       NOTIFICAÇÕES
+  ═══════════════════════════════════════════ -->
+  <div id="view-notifications" class="view">
+    <div class="top-bar">
+      <button class="btn-back" data-nav="feed">←</button>
+      <h2>🔔 Notificações</h2>
+    </div>
+    <div id="notifications-list" class="notifications-list">
+      <p class="empty-text">Nenhuma notificação ainda</p>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       BOTTOM NAVIGATION
+  ═══════════════════════════════════════════ -->
+  <nav id="bottom-nav" class="bottom-nav hidden">
+    <button class="nav-btn active" data-nav="feed">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Início</span>
+    </button>
+    <button class="nav-btn" data-nav="movies">
+      <span class="nav-icon">🎬</span>
+      <span class="nav-label">Filmes</span>
+    </button>
+    <button class="nav-btn nav-btn-center" data-nav="add-movie">
+      <span class="nav-icon-center">➕</span>
+    </button>
+    <button class="nav-btn" data-nav="discover">
+      <span class="nav-icon">🌊</span>
+      <span class="nav-label">Descobrir</span>
+    </button>
+    <button class="nav-btn" data-nav="profile">
+      <span class="nav-icon">👫</span>
+      <span class="nav-label">Perfil</span>
+    </button>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════
+       MODAIS
+  ═══════════════════════════════════════════ -->
+
+  <!-- Modal genérico -->
+  <div id="modal-overlay" class="modal-overlay hidden">
+    <div class="modal" id="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-title">Título</h3>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"><!-- conteúdo --></div>
+      <div class="modal-footer" id="modal-footer">
+        <button class="btn btn-ghost" id="modal-cancel">Cancelar</button>
+        <button class="btn btn-primary" id="modal-confirm">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast / Snackbar -->
+  <div id="toast" class="toast hidden">
+    <span id="toast-msg">Mensagem</span>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-spinner">
+      <div class="wave wave1"></div>
+      <div class="wave wave2"></div>
+      <div class="wave wave3"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       FIREBASE SDKs
+  ═══════════════════════════════════════════ -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+
+  <!-- App Scripts -->
+  <script src="js/firebase-config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/couple.js"></script>
+  <script src="js/movies.js"></script>
+  <script src="js/feed.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

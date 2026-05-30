@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Funções auxiliares ──────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+    function isUser(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isAdmin() {
+      return isAuth() && userDoc().isAdmin == true;
+    }
+    function inCouple(coupleId) {
+      return isAuth() && (
+        coupleId.split('_')[0] == request.auth.uid ||
+        coupleId.split('_')[1] == request.auth.uid
+      );
+    }
+
+    // ── Usuários ──────────────────────────
+    match /users/{uid} {
+      allow read:  if isAuth();
+      allow create: if isUser(uid);
+      allow update: if isUser(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Casais ────────────────────────────
+    match /couples/{coupleId} {
+      allow read:  if isAuth();
+      allow create: if isAuth();
+      allow update: if inCouple(coupleId) || isAdmin();
+      allow delete: if inCouple(coupleId) || isAdmin();
+    }
+
+    // ── Convites ──────────────────────────
+    match /invites/{inviteId} {
+      allow read:  if isAuth() && (
+        resource.data.from == request.auth.uid ||
+        resource.data.to   == request.auth.uid
+      );
+      allow create: if isAuth();
+      allow update: if isAuth() && (
+        resource.data.from == request.auth.uid ||
+        resource.data.to   == request.auth.uid
+      );
+      allow delete: if isAuth() && resource.data.from == request.auth.uid;
+    }
+
+    // ── Filmes ────────────────────────────
+    match /movies/{movieId} {
+      allow read:  if isAuth() && resource.data.approved == true;
+      allow read:  if isAdmin();
+      allow create: if isAuth();
+      allow update: if isAdmin() || (isAuth() && resource.data.addedBy == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ── Avaliações ────────────────────────
+    match /ratings/{ratingId} {
+      allow read:  if isAuth();
+      allow write: if isAuth() && inCouple(resource.data.coupleId != null ? resource.data.coupleId : request.resource.data.coupleId);
+    }
+
+    // ── Assistidos ────────────────────────
+    match /watched/{watchedId} {
+      allow read:  if isAuth();
+      allow write: if isAuth() && inCouple(resource.data.coupleId != null ? resource.data.coupleId : request.resource.data.coupleId);
+    }
+
+    // ── Watchlist ─────────────────────────
+    match /watchlist/{id} {
+      allow read:  if isAuth();
+      allow write: if isAuth() && inCouple(resource.data.coupleId != null ? resource.data.coupleId : request.resource.data.coupleId);
+    }
+
+    // ── Favoritos ─────────────────────────
+    match /favorites/{id} {
+      allow read:  if isAuth();
+      allow write: if isAuth() && inCouple(resource.data.coupleId != null ? resource.data.coupleId : request.resource.data.coupleId);
+    }
+
+    // ── Categorias ────────────────────────
+    match /categories/{id} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ── Classificações etárias ────────────
+    match /ageRatings/{id} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ── Follows ───────────────────────────
+    match /follows/{id} {
+      allow read:  if isAuth();
+      allow write: if isAuth();
+    }
+
+    // ── Feed ──────────────────────────────
+    match /feed/{id} {
+      allow read:  if isAuth();
+      allow create: if isAuth();
+      allow delete: if isAdmin();
+    }
+
+    // ── Notificações ──────────────────────
+    match /notifications/{id} {
+      allow read:  if isAuth() && resource.data.userId == request.auth.uid;
+      allow write: if isAuth();
+    }
+
+    // ── Denúncias ─────────────────────────
+    match /reports/{id} {
+      allow read:  if isAdmin();
+      allow create: if isAuth();
+      allow update: if isAdmin();
+    }
+
+    // ── Configurações ─────────────────────
+    match /config/{id} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+  }
+}
