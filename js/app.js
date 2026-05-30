@@ -27,49 +27,67 @@ function navigateTo(viewName, data = {}) {
   AppState.prevView = AppState.currentView;
   AppState.currentView = viewName;
 
-  // Esconder todas as views
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  // Views fora do main-layout (splash, auth, connect)
+  const outerViews = ['splash', 'auth', 'connect'];
+  const isOuter = outerViews.includes(viewName);
 
-  // Mostrar view alvo
-  const target = document.getElementById(`view-${viewName}`);
-  if (target) target.classList.add('active');
+  // Esconder views externas
+  document.querySelectorAll('#view-splash, #view-auth, #view-connect').forEach(v => v.classList.remove('active'));
 
-  // Atualizar nav
-  updateBottomNav(viewName);
+  // Mostrar/ocultar main-layout
+  const mainLayout = document.getElementById('main-layout');
+  mainLayout.classList.toggle('hidden', isOuter);
 
-  // Scroll para o topo
-  if (target) target.scrollTop = 0;
+  if (isOuter) {
+    const target = document.getElementById(`view-${viewName}`);
+    if (target) target.classList.add('active');
+  } else {
+    // Esconder todas as views dentro do main-content
+    document.querySelectorAll('#main-content .view').forEach(v => v.classList.remove('active'));
+    const target = document.getElementById(`view-${viewName}`);
+    if (target) {
+      target.classList.add('active');
+      target.scrollTop = 0;
+    }
+  }
+
+  // Atualizar nav (bottom + sidebar)
+  updateNavState(viewName);
 
   // Hooks de entrada
   switch(viewName) {
-    case 'feed':       initFeedView();     break;
-    case 'movies':     initMoviesView();   break;
+    case 'feed':          initFeedView();     break;
+    case 'movies':        initMoviesView();   break;
     case 'profile':
-      if (data.coupleId) initProfileView(data.coupleId, data.isOwn);
-      else initProfileView(AppState.coupleDoc?.id, true);
+      if (data.coupleId)  initProfileView(data.coupleId, data.isOwn);
+      else                initProfileView(AppState.coupleDoc?.id, true);
       break;
-    case 'discover':   initDiscoverView(); break;
-    case 'watchlist':  initWatchlistView(); break;
-    case 'favorites':  initFavoritesView(); break;
-    case 'settings':   initSettingsView(); break;
-    case 'admin':      Admin.initAdmin();  break;
-    case 'notifications': initNotifView(); break;
-    case 'connect':    initConnectView();  break;
+    case 'discover':      initDiscoverView(); break;
+    case 'watchlist':     initWatchlistView(); break;
+    case 'favorites':     initFavoritesView(); break;
+    case 'settings':      initSettingsView(); break;
+    case 'admin':         Admin.initAdmin();  break;
+    case 'notifications': initNotifView();   break;
+    case 'connect':       initConnectView();  break;
   }
 }
 
-function updateBottomNav(view) {
-  const navViews = ['feed', 'movies', 'discover', 'profile'];
+function updateNavState(view) {
+  // Bottom nav
   const nav = document.getElementById('bottom-nav');
-
-  // Esconder nav em views de auth/splash
-  const hideNav = ['splash', 'auth', 'connect'].includes(view);
-  nav.classList.toggle('hidden', hideNav);
-
+  const outerViews = ['splash', 'auth', 'connect'];
+  nav.classList.toggle('hidden', outerViews.includes(view));
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.nav === view);
   });
+  // Sidebar
+  document.querySelectorAll('.sidebar-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.nav === view);
+  });
 }
+
+// updateBottomNav mantido por compatibilidade (updateNavState é o novo)
+function updateBottomNav(view) { updateNavState(view); }
 
 // ════════════════════════════════════════════════
 // INICIALIZAÇÃO
@@ -87,6 +105,10 @@ document.addEventListener('DOMContentLoaded', () => {
       setTimeout(() => navigateTo('auth'), 1500); // splash → auth
     } else {
       AppState.userDoc = userDoc;
+
+      // Mostrar botão admin na sidebar se for admin
+      const adminBtn = document.getElementById('sidebar-admin-btn');
+      if (adminBtn && Auth.isAdmin()) adminBtn.style.display = '';
 
       if (!userDoc?.coupleId) {
         setTimeout(() => navigateTo('connect'), 1500);
@@ -199,7 +221,7 @@ function setupGlobalEventListeners() {
     if (!email) { showAuthError('Digite seu e-mail primeiro'); return; }
     try {
       await Auth.resetPassword(email);
-      showToast('E-mail de recuperação enviado! 📧');
+      showToast('E-mail de recuperação enviado!');
     } catch(err) {
       showAuthError(translateAuthError(err.code));
     }
@@ -249,7 +271,9 @@ async function initFeedView() {
         <div class="feed-empty">
           <img src="refs/personagem2.png" alt="" class="empty-mascot" />
           <p>Siga outros casais para ver o que estão assistindo!</p>
-          <button class="btn btn-primary" data-nav="discover">Descobrir casais</button>
+          <button class="btn btn-primary" data-nav="discover">
+            <i class="fa-solid fa-compass"></i> Descobrir casais
+          </button>
         </div>`;
       return;
     }
@@ -285,8 +309,8 @@ function updateCoupleQuickCard(doc) {
 
     const a1 = document.getElementById('cqc-avatar1');
     const a2 = document.getElementById('cqc-avatar2');
-    if (a1) a1.innerHTML = u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '👤';
-    if (a2) a2.innerHTML = u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '👤';
+    if (a1) a1.innerHTML = u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
+    if (a2) a2.innerHTML = u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
   });
 }
 
@@ -345,7 +369,7 @@ function loadMoviesGrid(catId) {
 function renderMoviesGrid(movies) {
   const grid = document.getElementById('movies-grid');
   if (!movies.length) {
-    grid.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Nenhum filme encontrado 🎬</p>';
+    grid.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Nenhum filme encontrado</p>';
     return;
   }
   grid.innerHTML = movies.map(m => {
@@ -355,7 +379,7 @@ function renderMoviesGrid(movies) {
       <div class="movie-card" onclick="openMovieDetail('${m.id}')">
         ${m.coverUrl
           ? `<img class="movie-card-cover" src="${m.coverUrl}" alt="${m.title}" loading="lazy" />`
-          : `<div class="movie-card-cover" style="display:flex;align-items:center;justify-content:center;font-size:2.5rem">🎬</div>`}
+          : `<div class="movie-card-cover"></div>`}
         <div class="movie-card-info">
           <div class="movie-card-title">${m.title}</div>
           <div class="movie-card-cat">${cat ? `${cat.icon} ${cat.name}` : ''}</div>
@@ -401,12 +425,12 @@ async function openMovieDetail(movieId) {
       document.getElementById('btn-toggle-favorite').classList.toggle('active', inFav);
 
       const watchedBtn = document.getElementById('btn-mark-watched');
-      watchedBtn.textContent = watched ? '✅ Assistido!' : '✅ Marcar como assistido';
+      watchedBtn.innerHTML = watched ? '<i class="fa-solid fa-check"></i> Assistido!' : '<i class="fa-solid fa-check"></i> Marcar como assistido';
       watchedBtn.disabled = watched;
     }
 
     document.getElementById('movie-added-by').textContent =
-      `Adicionado por ${movie.addedByName || 'alguém'} 💙`;
+      `Adicionado por ${movie.addedByName || 'alguém'}`;
 
     // Botões de ação
     document.getElementById('btn-rate-movie').onclick = async () => {
@@ -416,8 +440,8 @@ async function openMovieDetail(movieId) {
       try {
         showLoading(true);
         await Movies.rateMovie(coupleId, movieId, selected);
-        showToast(`Avaliado com ${selected} ⭐`);
-        document.getElementById('rating-display').textContent = `Sua avaliação: ${selected}/5 ⭐`;
+        showToast(`Avaliado com ${selected} estrelas`);
+        document.getElementById('rating-display').textContent = `Sua avaliação: ${selected}/5 estrelas`;
       } catch(e) { showToast(e.message); }
       finally { showLoading(false); }
     };
@@ -427,9 +451,9 @@ async function openMovieDetail(movieId) {
       try {
         showLoading(true);
         await Movies.markWatched(coupleId, movieId);
-        document.getElementById('btn-mark-watched').textContent = '✅ Assistido!';
+        document.getElementById('btn-mark-watched').innerHTML = '<i class="fa-solid fa-check"></i> Assistido!';
         document.getElementById('btn-mark-watched').disabled = true;
-        showToast('Marcado como assistido! 🎬');
+        showToast('Marcado como assistido!');
       } catch(e) { showToast(e.message); }
       finally { showLoading(false); }
     };
@@ -476,7 +500,7 @@ function setupStarInput(currentVal) {
   }
 
   highlightStars(currentVal);
-  if (currentVal) display.textContent = `Avaliação atual: ${currentVal}/5 ⭐`;
+  if (currentVal) display.textContent = `Avaliação atual: ${currentVal}/5 estrelas`;
 
   stars.forEach((star, i) => {
     star.addEventListener('mouseenter', () => {
@@ -546,7 +570,7 @@ function setupStarInput(currentVal) {
     try {
       showLoading(true);
       await Movies.addMovie(data, _coverFile);
-      showToast('Filme publicado! 🎬');
+      showToast('Filme publicado!');
       document.getElementById('form-add-movie').reset();
       preview.classList.add('hidden');
       placeholder.style.display = '';
@@ -570,7 +594,7 @@ async function initWatchlistView() {
   try {
     const items = await Movies.getWatchlist(coupleId);
     if (!items.length) {
-      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem2.png" class="empty-mascot"/><p>Nenhum filme na watchlist ainda 📋</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
+      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem2.png" class="empty-mascot"/><p>Nenhum filme na watchlist ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
       return;
     }
     container.innerHTML = '';
@@ -598,7 +622,7 @@ async function initFavoritesView() {
   try {
     const items = await Movies.getFavorites(coupleId);
     if (!items.length) {
-      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem2.png" class="empty-mascot"/><p>Nenhum favorito ainda ⭐</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
+      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem2.png" class="empty-mascot"/><p>Nenhum favorito ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
       return;
     }
     container.innerHTML = '';
@@ -620,7 +644,7 @@ function buildListMovieItem(movie, onRemove) {
   el.innerHTML = `
     ${movie.coverUrl
       ? `<img class="list-movie-thumb" src="${movie.coverUrl}" alt="${movie.title}" loading="lazy" />`
-      : `<div class="list-movie-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem">🎬</div>`}
+      : `<div class="list-movie-thumb"></div>`}
     <div class="list-movie-info">
       <div class="list-movie-title">${movie.title}</div>
       <div class="list-movie-cat">${cat ? `${cat.icon} ${cat.name}` : ''}</div>
@@ -650,12 +674,12 @@ async function initProfileView(coupleId, isOwn = true) {
     const since = couple.createdAt?.toDate?.();
     document.getElementById('profile-couple-since').textContent = since
       ? `Casal desde ${since.toLocaleDateString('pt-BR', { month:'long', year:'numeric' })}`
-      : 'Casal Plup 💙';
+      : 'Casal Plup';
 
     const a1 = document.getElementById('profile-avatar1');
     const a2 = document.getElementById('profile-avatar2');
-    a1.innerHTML = u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '👤';
-    a2.innerHTML = u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '👤';
+    a1.innerHTML = u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
+    a2.innerHTML = u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
 
     document.getElementById('profile-score-num').textContent = couple.score || 0;
     document.getElementById('stat-watched').textContent  = couple.moviesWatched || 0;
@@ -717,7 +741,7 @@ async function initProfileView(coupleId, isOwn = true) {
             reportedBy: AppState.user.uid, status: 'pending',
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
           });
-          showToast('Denúncia enviada 🙏');
+          showToast('Denúncia enviada.');
           closeModal();
         });
       };
@@ -803,8 +827,8 @@ async function renderCouplesList(couples, container) {
     el.className = 'couple-item';
     el.innerHTML = `
       <div class="couple-item-avatars">
-        <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '👤'}</div>
-        <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '👤'}</div>
+        <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
+        <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
       </div>
       <div class="couple-item-info">
         <div class="couple-item-names">${u1?.name || '?'} & ${u2?.name || '?'}</div>
@@ -828,7 +852,7 @@ function initConnectView() {
   document.getElementById('my-user-id').textContent = uid;
 
   document.getElementById('btn-copy-id').onclick = () => {
-    navigator.clipboard.writeText(uid).then(() => showToast('ID copiado! 📋'));
+    navigator.clipboard.writeText(uid).then(() => showToast('ID copiado!'));
   };
 
   document.getElementById('btn-search-partner').onclick = async () => {
@@ -848,7 +872,7 @@ function initConnectView() {
       if (found.coupleId) { showToast('Este usuário já está em um casal'); return; }
 
       cardEl.innerHTML = `
-        <div class="avatar avatar-lg">${found.avatarUrl ? `<img src="${found.avatarUrl}" alt="">` : '👤'}</div>
+        <div class="avatar avatar-lg">${found.avatarUrl ? `<img src="${found.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
         <div>
           <div class="partner-name">${found.name}</div>
           <div class="partner-nick">@${found.nickname}</div>
@@ -868,7 +892,7 @@ function initConnectView() {
       await Couple.sendInvite(uid, toUid);
       document.getElementById('partner-result').classList.add('hidden');
       document.getElementById('connect-pending').classList.remove('hidden');
-      showToast('Convite enviado! 💌');
+      showToast('Convite enviado!');
     } catch(e) { showToast(e.message); }
     finally { showLoading(false); }
   };
@@ -892,13 +916,13 @@ function initConnectView() {
     if (!invites.length) { list.innerHTML = '<p style="font-size:.8rem;color:var(--gray-4)">Nenhum convite recebido</p>'; return; }
     list.innerHTML = invites.map(inv => `
       <div class="invite-item" data-id="${inv.id}">
-        <div class="avatar">${inv.fromAvatar ? `<img src="${inv.fromAvatar}" alt="">` : '👤'}</div>
+        <div class="avatar">${inv.fromAvatar ? `<img src="${inv.fromAvatar}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
         <div class="invite-info">
           <div class="invite-name">${inv.fromName}</div>
           <div class="invite-nick">@${inv.fromNickname}</div>
         </div>
         <div class="invite-actions">
-          <button class="btn btn-success btn-sm btn-accept-invite" data-id="${inv.id}" data-from="${inv.from}" data-name="${inv.fromName}" data-nick="${inv.fromNickname}" data-avatar="${inv.fromAvatar || ''}">✅</button>
+          <button class="btn btn-success btn-sm btn-accept-invite" data-id="${inv.id}" data-from="${inv.from}" data-name="${inv.fromName}" data-nick="${inv.fromNickname}" data-avatar="${inv.fromAvatar || ''}"><i class="fa-solid fa-check"></i></button>
           <button class="btn btn-ghost btn-sm btn-decline-invite" data-id="${inv.id}">✕</button>
         </div>
       </div>
@@ -913,7 +937,7 @@ function initConnectView() {
           AppState.coupleDoc = await Couple.getCoupleDoc(coupleId);
           AppState.userDoc = await Auth.fetchUserDoc(uid);
           setupRealtimeListeners();
-          showToast('Vocês agora são um casal! 💙');
+          showToast('Vocês agora são um casal!');
           navigateTo('feed');
         } catch(e) { showToast(e.message); }
         finally { showLoading(false); }
@@ -951,7 +975,11 @@ function initNotifView() {
 }
 
 function _notifIcon(type) {
-  const icons = { invite_accepted: '💙', new_follower: '👥', default: '🔔' };
+  const icons = {
+    invite_accepted: '<i class="fa-solid fa-heart"></i>',
+    new_follower:    '<i class="fa-solid fa-users"></i>',
+    default:         '<i class="fa-solid fa-bell"></i>'
+  };
   return icons[type] || icons.default;
 }
 
@@ -975,7 +1003,7 @@ function initSettingsView() {
   document.getElementById('settings-nickname').value = `@${doc.nickname || ''}`;
 
   const avatarEl = document.getElementById('settings-avatar');
-  avatarEl.innerHTML = doc.avatarUrl ? `<img src="${doc.avatarUrl}" alt="">` : '👤';
+  avatarEl.innerHTML = doc.avatarUrl ? `<img src="${doc.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
 
   document.getElementById('btn-change-avatar').onclick = () => {
     document.getElementById('avatar-file').click();
@@ -989,7 +1017,7 @@ function initSettingsView() {
       const url = await Auth.uploadAvatar(user.uid, file);
       avatarEl.innerHTML = `<img src="${url}" alt="">`;
       AppState.userDoc = await Auth.fetchUserDoc(user.uid);
-      showToast('Foto atualizada! ✅');
+      showToast('Foto atualizada!');
     } catch(e) { showToast(e.message); }
     finally { showLoading(false); }
   };
@@ -1001,7 +1029,7 @@ function initSettingsView() {
     try {
       await Auth.updateProfile(user.uid, { name });
       AppState.userDoc = await Auth.fetchUserDoc(user.uid);
-      showToast('Perfil atualizado! ✅');
+      showToast('Perfil atualizado!');
     } catch(e) { showToast(e.message); }
     finally { showLoading(false); }
   };

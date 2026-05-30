@@ -67,22 +67,22 @@ const Feed = (() => {
 
     switch (event.type) {
       case 'watched':
-        actionText = '✅ assistiu a um filme!';
+        actionText = '<i class="fa-solid fa-check"></i> assistiu a um filme!';
         break;
       case 'rated':
-        actionText = `⭐ avaliou com ${event.stars} estrela${event.stars !== 1 ? 's' : ''}`;
+        actionText = `<i class="fa-solid fa-star"></i> avaliou com ${event.stars} estrela${event.stars !== 1 ? 's' : ''}`;
         starsHtml  = `<div class="feed-card-stars">${_renderStars(event.stars)}</div>`;
         break;
       case 'movie_added':
-        actionText = '🎬 adicionou um filme à plataforma!';
+        actionText = '<i class="fa-solid fa-film"></i> adicionou um filme à plataforma!';
         break;
       default:
-        actionText = '📌 fez algo legal';
+        actionText = '<i class="fa-solid fa-circle-dot"></i> nova atividade';
     }
 
     const coverHtml = event.coverUrl
       ? `<img class="feed-card-cover" src="${event.coverUrl}" alt="${event.movieTitle}" loading="lazy" />`
-      : `<div class="feed-card-cover" style="background:linear-gradient(135deg,var(--navy),var(--blue-m));display:flex;align-items:center;justify-content:center;font-size:3rem;">🎬</div>`;
+      : `<div class="feed-card-cover movie-card-cover"></div>`;
 
     card.innerHTML = `
       <div class="feed-card-header">
