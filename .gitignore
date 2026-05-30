@@ -1,0 +1,5 @@
+.firebase/
+firebase-debug.log
+node_modules/
+desktop.ini
+.DS_Store
