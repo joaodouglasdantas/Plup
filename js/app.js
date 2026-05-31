@@ -445,6 +445,17 @@ async function openMovieDetail(movieId, readOnly = false) {
       const watchedBtn = document.getElementById('btn-mark-watched');
       watchedBtn.innerHTML = watched ? '<i class="fa-solid fa-check"></i> Assistido!' : '<i class="fa-solid fa-check"></i> Marcar como assistido';
       watchedBtn.disabled = watched;
+
+      // Regra de negócio: só pode avaliar se já assistiu
+      const starsInput   = document.getElementById('stars-input');
+      const rateBtn      = document.getElementById('btn-rate-movie');
+      const ratingDisplay = document.getElementById('rating-display');
+      if (!watched) {
+        starsInput.style.pointerEvents = 'none';
+        starsInput.style.opacity = '0.35';
+        rateBtn.disabled = true;
+        ratingDisplay.textContent = 'Marque como assistido para avaliar';
+      }
     }
 
     // "Adicionado pelo casal X & Y" clicável
@@ -470,14 +481,14 @@ async function openMovieDetail(movieId, readOnly = false) {
 
     // Botões de ação
     document.getElementById('btn-rate-movie').onclick = async () => {
-      const selected = document.querySelectorAll('#stars-input .star.active').length;
+      const selected = parseFloat(document.getElementById('stars-input').dataset.selectedRating || '0');
       if (!selected) { showToast('Selecione uma avaliação'); return; }
       if (!coupleId) { showToast('Conecte-se a um parceiro primeiro'); return; }
       try {
         showLoading(true);
         await Movies.rateMovie(coupleId, movieId, selected);
-        showToast(`Avaliado com ${selected} estrelas`);
-        document.getElementById('rating-display').textContent = `Sua avaliação: ${selected}/5 estrelas`;
+        showToast(`Avaliado com ${selected} ⭐`);
+        document.getElementById('rating-display').textContent = `Avaliação atual: ${selected} de 5 estrelas`;
       } catch(e) { showToast(e.message); }
       finally { showLoading(false); }
     };
@@ -490,6 +501,12 @@ async function openMovieDetail(movieId, readOnly = false) {
         document.getElementById('btn-mark-watched').innerHTML = '<i class="fa-solid fa-check"></i> Assistido!';
         document.getElementById('btn-mark-watched').disabled = true;
         showToast('Marcado como assistido!');
+        // Desbloquear avaliação
+        const si = document.getElementById('stars-input');
+        si.style.pointerEvents = '';
+        si.style.opacity = '';
+        document.getElementById('btn-rate-movie').disabled = false;
+        document.getElementById('rating-display').textContent = 'Sem avaliação ainda';
       } catch(e) { showToast(e.message); }
       finally { showLoading(false); }
     };
@@ -528,28 +545,68 @@ async function openMovieDetail(movieId, readOnly = false) {
 }
 
 function setupStarInput(currentVal) {
-  const stars = document.querySelectorAll('#stars-input .star');
-  const display = document.getElementById('rating-display');
+  const container = document.getElementById('stars-input');
+  const display   = document.getElementById('rating-display');
+  let selectedVal = currentVal || 0;
 
-  function highlightStars(val) {
-    stars.forEach((s, i) => s.classList.toggle('active', i < val));
+  function renderStars(val) {
+    container.querySelectorAll('.star-icon').forEach((icon, i) => {
+      const n = i + 1;
+      if (val >= n)            icon.className = 'fa-solid fa-star star-icon star-active';
+      else if (val >= n - 0.5) icon.className = 'fa-solid fa-star-half-stroke star-icon star-active';
+      else                     icon.className = 'fa-solid fa-star star-icon';
+    });
   }
 
-  highlightStars(currentVal);
-  if (currentVal) display.textContent = `Avaliação atual: ${currentVal}/5 estrelas`;
+  container.innerHTML = '';
+  for (let n = 1; n <= 5; n++) {
+    const wrapper = document.createElement('span');
+    wrapper.className = 'star-wrapper';
 
-  stars.forEach((star, i) => {
-    star.addEventListener('mouseenter', () => {
-      stars.forEach((s, j) => s.classList.toggle('hover', j <= i));
+    const icon = document.createElement('i');
+    icon.className = 'fa-solid fa-star star-icon';
+
+    // Dois triggers invisíveis: metade esquerda = X.5, metade direita = X.0
+    const left  = document.createElement('span');
+    const right = document.createElement('span');
+    left.className  = 'star-half-l';
+    right.className = 'star-half-r';
+
+    const hoverLeft  = () => { renderStars(n - 0.5); display.textContent = `${n - 0.5} de 5 ⭐`; };
+    const hoverRight = () => { renderStars(n);       display.textContent = `${n} de 5 ⭐`; };
+
+    left.addEventListener('mouseenter',  hoverLeft);
+    right.addEventListener('mouseenter', hoverRight);
+
+    left.addEventListener('click', () => {
+      selectedVal = n - 0.5;
+      container.dataset.selectedRating = selectedVal;
+      renderStars(selectedVal);
+      display.textContent = `${selectedVal} de 5 ⭐ selecionado`;
     });
-    star.addEventListener('mouseleave', () => {
-      stars.forEach(s => s.classList.remove('hover'));
+    right.addEventListener('click', () => {
+      selectedVal = n;
+      container.dataset.selectedRating = selectedVal;
+      renderStars(selectedVal);
+      display.textContent = `${selectedVal} de 5 ⭐ selecionado`;
     });
-    star.addEventListener('click', () => {
-      stars.forEach(s => s.classList.remove('hover'));
-      highlightStars(i + 1);
-    });
-  });
+
+    wrapper.appendChild(icon);
+    wrapper.appendChild(left);
+    wrapper.appendChild(right);
+    container.appendChild(wrapper);
+  }
+
+  container.onmouseleave = () => {
+    renderStars(selectedVal);
+    display.textContent = selectedVal
+      ? `Avaliação atual: ${selectedVal} de 5 estrelas`
+      : 'Sem avaliação ainda';
+  };
+
+  container.dataset.selectedRating = selectedVal;
+  renderStars(selectedVal);
+  if (currentVal) display.textContent = `Avaliação atual: ${currentVal} de 5 estrelas`;
 }
 
 // ── ADICIONAR FILME ────────────────────────────

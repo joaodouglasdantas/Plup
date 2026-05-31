@@ -557,12 +557,12 @@ textarea { resize: vertical; }
 .movie-desc { color: var(--gray-5); font-size: 0.9rem; line-height: 1.65; }
 
 .badge-cat {
-  display: inline-flex; align-items: center; padding: 3px 10px;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
   background: var(--cyan-l); color: var(--navy);
   border-radius: 100px; font-size: 0.72rem; font-weight: 700;
 }
 .badge-age {
-  display: inline-flex; align-items: center; padding: 3px 10px;
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px;
   background: var(--warning); color: var(--navy);
   border-radius: 100px; font-size: 0.72rem; font-weight: 700;
 }
@@ -573,13 +573,38 @@ textarea { resize: vertical; }
   box-shadow: 0 2px 12px rgba(3,4,94,0.07);
 }
 .rating-section h3 { font-size: 0.95rem; font-weight: 800; color: var(--navy); }
-.stars-input { display: flex; gap: 6px; }
+.stars-input { display: flex; gap: 4px; }
 .star {
   font-size: 2rem; color: var(--gray-3); cursor: pointer;
   transition: var(--transition); user-select: none;
 }
 .star.active, .star.hover { color: var(--warning); transform: scale(1.1); }
+/* ── Meia-estrela ── */
+.star-wrapper {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+  line-height: 1;
+}
+.star-icon {
+  font-size: 2rem;
+  color: var(--gray-3);
+  display: block;
+  pointer-events: none;
+  user-select: none;
+  transition: color 0.15s, transform 0.15s;
+}
+.star-icon.star-active { color: var(--warning); transform: scale(1.1); }
+.star-half-l, .star-half-r {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 50%;
+  cursor: pointer;
+}
+.star-half-l { left: 0; }
+.star-half-r { right: 0; }
 .rating-display { font-size: 0.85rem; color: var(--gray-5); }
+.couple-ratings-info { font-size: 0.78rem; color: var(--gray-5); text-align: center; line-height: 1.6; }
 .movie-added-by { font-size: 0.8rem; color: var(--gray-4); text-align: center; }
 
 /* ════════════════════════════════════════════════

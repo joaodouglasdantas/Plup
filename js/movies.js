@@ -115,31 +115,33 @@ const Movies = (() => {
 
   // ── Avaliar filme ─────────────────────────
   async function rateMovie(coupleId, movieId, stars) {
-    const ratingId = `${coupleId}_${movieId}`;
+    const uid = Auth.getCurrentUser().uid;
+    const ratingId = `${coupleId}_${movieId}_${uid}`;
     const exists = (await db.collection('ratings').doc(ratingId).get()).exists;
 
     await db.collection('ratings').doc(ratingId).set({
-      coupleId, movieId, stars,
+      coupleId, movieId, stars, userId: uid,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     if (!exists) {
       await Couple.recalcScore(coupleId);
-
-      // Feed event
       const movieDoc = await getMovie(movieId);
       await _addFeedEvent(coupleId, 'rated', {
-        movieId,
-        movieTitle: movieDoc?.title || '',
-        coverUrl: movieDoc?.coverUrl || '',
-        stars
+        movieId, movieTitle: movieDoc?.title || '', coverUrl: movieDoc?.coverUrl || '', stars
       });
     }
   }
 
   async function getRating(coupleId, movieId) {
-    const snap = await db.collection('ratings').doc(`${coupleId}_${movieId}`).get();
+    const uid = Auth.getCurrentUser().uid;
+    const snap = await db.collection('ratings').doc(`${coupleId}_${movieId}_${uid}`).get();
     return snap.exists ? snap.data().stars : 0;
+  }
+
+  async function getPartnerRating(coupleId, movieId, partnerUid) {
+    const snap = await db.collection('ratings').doc(`${coupleId}_${movieId}_${partnerUid}`).get();
+    return snap.exists ? snap.data().stars : null;
   }
 
   // ── Marcar como assistido ─────────────────
@@ -164,6 +166,11 @@ const Movies = (() => {
       movieTitle: movieDoc?.title || '',
       coverUrl: movieDoc?.coverUrl || ''
     });
+  }
+
+  async function removeFromWatched(coupleId, movieId) {
+    await db.collection('watched').doc(`${coupleId}_${movieId}`).delete();
+    await Couple.recalcScore(coupleId);
   }
 
   async function isWatched(coupleId, movieId) {
@@ -273,8 +280,8 @@ const Movies = (() => {
     onCategories, addCategory, deleteCategory,
     onAgeRatings, addAgeRating, deleteAgeRating,
     addMovie, onMovies, searchMovies, getMovie,
-    rateMovie, getRating,
-    markWatched, isWatched, getWatched,
+    rateMovie, getRating, getPartnerRating,
+    markWatched, removeFromWatched, isWatched, getWatched,
     addToWatchlist, removeFromWatchlist, isInWatchlist, getWatchlist,
     addToFavorites, isInFavorites, getFavorites,
     reportMovie, deleteMovie, setApproved
