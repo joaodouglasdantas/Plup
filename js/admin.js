@@ -75,7 +75,7 @@ const Admin = (() => {
       if (!ages.length) { list.innerHTML = '<p class="empty-text">Nenhuma classificação cadastrada</p>'; return; }
       list.innerHTML = ages.map(a => `
         <div class="admin-item">
-          <span class="badge-age" style="background:${a.color || '#FFB703'}">${a.label}</span>
+          <span class="badge-age" style="background:${a.color || '#FFB703'};color:#fff">${a.label}</span>
           <span class="admin-item-name">${a.label}</span>
           <button class="admin-item-delete" onclick="Admin.deleteAgeRating('${a.id}')">🗑️</button>
         </div>
