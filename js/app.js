@@ -111,7 +111,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (adminBtn && Auth.isAdmin()) adminBtn.style.display = '';
 
       if (!userDoc?.coupleId) {
-        setTimeout(() => navigateTo('connect'), 1500);
+        if (Auth.isAdmin()) {
+          setTimeout(() => navigateTo('feed'), 1500);
+        } else {
+          setTimeout(() => navigateTo('connect'), 1500);
+        }
       } else {
         AppState.coupleDoc = await Couple.getCoupleDoc(userDoc.coupleId);
         setupRealtimeListeners();
