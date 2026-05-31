@@ -16,6 +16,8 @@ const AppState = {
   ageRatings:   [],
   currentMovieId: null,
   editingMovieId: null,
+  _watchlistUnsub: null,
+  _favoritesUnsub: null,
 
   // Unsubscribes dos listeners realtime
   _unsubs: []
@@ -708,6 +710,8 @@ let _resetAddMovieForm = null;
     }
   });
 
+  const deleteBtn = document.getElementById('btn-delete-movie');
+
   // Expor reset para uso externo
   _resetAddMovieForm = () => {
     _coverFile = null;
@@ -717,6 +721,7 @@ let _resetAddMovieForm = null;
     placeholder.style.display = '';
     titleH2.textContent  = 'Adicionar Filme';
     submitBtn.innerHTML  = '<i class="fa-solid fa-upload"></i> Publicar Filme';
+    deleteBtn.classList.add('hidden');
   };
 
   // Expor pré-preenchimento para modo edição
@@ -740,6 +745,7 @@ let _resetAddMovieForm = null;
     }
     titleH2.textContent = 'Editar Filme';
     submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar alterações';
+    deleteBtn.classList.remove('hidden');
   };
 
   // Preencher selects com categorias e idades
@@ -757,6 +763,23 @@ let _resetAddMovieForm = null;
     sel.innerHTML = '<option value="">Classificação etária</option>';
     ages.forEach(a => { sel.innerHTML += `<option value="${a.id}">${a.label}</option>`; });
     sel.value = cur;
+  });
+
+  // Botão excluir (apenas no modo edição)
+  deleteBtn.addEventListener('click', async () => {
+    if (!AppState.editingMovieId) return;
+    showModal('Excluir filme', '<p>Tem certeza? Esta ação não pode ser desfeita.</p>', async () => {
+      try {
+        showLoading(true);
+        await Movies.deleteMovie(AppState.editingMovieId);
+        showToast('Filme excluído');
+        AppState.editingMovieId = null;
+        _resetAddMovieForm();
+        closeModal();
+        navigateTo('movies');
+      } catch(e) { showToast(e.message); }
+      finally { showLoading(false); }
+    });
   });
 
   // Botão voltar — respeita modo edição
@@ -814,56 +837,66 @@ function openEditMovie(movie) {
 }
 
 // ── WATCHLIST ──────────────────────────────────
-async function initWatchlistView() {
+function initWatchlistView() {
   const coupleId = AppState.coupleDoc?.id;
   const container = document.getElementById('watchlist-container');
   if (!coupleId) { container.innerHTML = '<p class="empty-text">Conecte-se a um parceiro primeiro</p>'; return; }
 
-  showLoading(true);
-  try {
-    const items = await Movies.getWatchlist(coupleId);
-    if (!items.length) {
-      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem.png" class="empty-mascot"/><p>Nenhum filme na watchlist ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
-      return;
-    }
-    container.innerHTML = '';
-    for (const item of items) {
-      const movie = await Movies.getMovie(item.movieId);
-      if (!movie) continue;
-      container.appendChild(buildListMovieItem(movie, () => removeFromWatchlistUI(coupleId, item.movieId, container)));
-    }
-  } finally { showLoading(false); }
-}
+  if (AppState._watchlistUnsub) { AppState._watchlistUnsub(); AppState._watchlistUnsub = null; }
 
-async function removeFromWatchlistUI(coupleId, movieId, container) {
-  await Movies.removeFromWatchlist(coupleId, movieId);
-  showToast('Removido da watchlist');
-  initWatchlistView();
+  container.innerHTML = '<p class="empty-text">Carregando...</p>';
+
+  AppState._watchlistUnsub = db.collection('watchlist')
+    .where('coupleId', '==', coupleId)
+    .onSnapshot(async snap => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0));
+
+      if (!items.length) {
+        container.innerHTML = `<div class="feed-empty"><img src="refs/personagem.png" class="empty-mascot"/><p>Nenhum filme na watchlist ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
+        return;
+      }
+      container.innerHTML = '';
+      for (const item of items) {
+        const movie = await Movies.getMovie(item.movieId);
+        if (!movie) continue;
+        container.appendChild(buildListMovieItem(movie, async () => {
+          await Movies.removeFromWatchlist(coupleId, item.movieId);
+          showToast('Removido da watchlist');
+        }));
+      }
+    }, err => { console.error(err); container.innerHTML = '<p class="empty-text">Erro ao carregar</p>'; });
 }
 
 // ── FAVORITOS ──────────────────────────────────
-async function initFavoritesView() {
+function initFavoritesView() {
   const coupleId = AppState.coupleDoc?.id;
   const container = document.getElementById('favorites-container');
   if (!coupleId) { container.innerHTML = '<p class="empty-text">Conecte-se a um parceiro primeiro</p>'; return; }
 
-  showLoading(true);
-  try {
-    const items = await Movies.getFavorites(coupleId);
-    if (!items.length) {
-      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem.png" class="empty-mascot"/><p>Nenhum favorito ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
-      return;
-    }
-    container.innerHTML = '';
-    for (const item of items) {
-      const movie = await Movies.getMovie(item.movieId);
-      if (!movie) continue;
-      container.appendChild(buildListMovieItem(movie, async () => {
-        await Movies.addToFavorites(coupleId, item.movieId);
-        initFavoritesView();
-      }));
-    }
-  } finally { showLoading(false); }
+  if (AppState._favoritesUnsub) { AppState._favoritesUnsub(); AppState._favoritesUnsub = null; }
+
+  container.innerHTML = '<p class="empty-text">Carregando...</p>';
+
+  AppState._favoritesUnsub = db.collection('favorites')
+    .where('coupleId', '==', coupleId)
+    .onSnapshot(async snap => {
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0));
+
+      if (!items.length) {
+        container.innerHTML = `<div class="feed-empty"><img src="refs/personagem.png" class="empty-mascot"/><p>Nenhum favorito ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
+        return;
+      }
+      container.innerHTML = '';
+      for (const item of items) {
+        const movie = await Movies.getMovie(item.movieId);
+        if (!movie) continue;
+        container.appendChild(buildListMovieItem(movie, async () => {
+          await Movies.addToFavorites(coupleId, item.movieId);
+        }));
+      }
+    }, err => { console.error(err); container.innerHTML = '<p class="empty-text">Erro ao carregar</p>'; });
 }
 
 function buildListMovieItem(movie, onRemove) {
@@ -1048,7 +1081,6 @@ async function loadDiscoverCouples() {
     const couples = await Couple.listCouples(50);
     const myId    = AppState.coupleDoc?.id;
     const sorted  = couples
-      .filter(c => c.id !== myId)
       .sort((a, b) => (b.score || 0) - (a.score || 0));
 
     const top3 = sorted.slice(0, 3);
@@ -1065,13 +1097,15 @@ async function loadDiscoverCouples() {
         const [u1, u2] = await Promise.all([Auth.fetchUserDoc(c.user1), Auth.fetchUserDoc(c.user2)]);
         const card = document.createElement('div');
         card.className = `podium-card podium-card-${i + 1}`;
+        const isYou = c.id === myId;
+        if (isYou) card.style.cssText += ';border-color:var(--cyan);';
         card.innerHTML = `
           <div class="podium-medal">${medals[i]}</div>
           <div class="podium-avatars">
             <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
             <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
           </div>
-          <div class="podium-names">${u1?.name || '?'} & ${u2?.name || '?'}</div>
+          <div class="podium-names">${u1?.name || '?'} & ${u2?.name || '?'}${isYou ? ' <span class="badge-you">Você</span>' : ''}</div>
           <div class="podium-score">${c.score || 0} pts</div>
         `;
         card.addEventListener('click', () => navigateTo('profile', { coupleId: c.id, isOwn: c.id === myId }));
@@ -1101,14 +1135,15 @@ async function renderCouplesList(couples, container) {
       Auth.fetchUserDoc(c.user2)
     ]);
     const el = document.createElement('div');
-    el.className = 'couple-item';
+    const isYouItem = c.id === AppState.coupleDoc?.id;
+    el.className = `couple-item${isYouItem ? ' couple-item-you' : ''}`;
     el.innerHTML = `
       <div class="couple-item-avatars">
         <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
         <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
       </div>
       <div class="couple-item-info">
-        <div class="couple-item-names">${u1?.name || '?'} & ${u2?.name || '?'}</div>
+        <div class="couple-item-names">${u1?.name || '?'} & ${u2?.name || '?'}${isYouItem ? ' <span class="badge-you">Você</span>' : ''}</div>
         <div class="couple-item-stats">@${u1?.nickname || ''} & @${u2?.nickname || ''} · ${c.moviesWatched || 0} filmes</div>
       </div>
       <div class="couple-item-score">${c.score || 0} pts</div>
