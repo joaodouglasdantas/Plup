@@ -273,7 +273,7 @@ async function initFeedView() {
     if (!events.length) {
       container.innerHTML = `
         <div class="feed-empty">
-          <img src="refs/personagem2.png" alt="" class="empty-mascot" />
+          <img src="refs/personagem.png" alt="" class="empty-mascot" />
           <p>Siga outros casais para ver o que estão assistindo!</p>
           <button class="btn btn-primary" data-nav="discover">
             <i class="fa-solid fa-compass"></i> Descobrir casais
@@ -429,26 +429,35 @@ async function openMovieDetail(movieId, readOnly = false) {
     else { catEl.style.background = ''; catEl.style.color = ''; }
     document.getElementById('movie-detail-age').textContent = age?.label || '';
 
-    const coupleId = AppState.coupleDoc?.id;
+    const coupleId  = AppState.coupleDoc?.id;
+    const myUid     = AppState.user?.uid;
+    const coupleDoc = AppState.coupleDoc;
+    const partnerUid = coupleDoc
+      ? (coupleDoc.user1 === myUid ? coupleDoc.user2 : coupleDoc.user1)
+      : null;
+
     if (coupleId && !readOnly) {
-      const [stars, inWatchlist, inFav, watched] = await Promise.all([
+      const [myStars, partnerStars, inWatchlist, inFav, watched] = await Promise.all([
         Movies.getRating(coupleId, movieId),
+        partnerUid ? Movies.getPartnerRating(coupleId, movieId, partnerUid) : Promise.resolve(null),
         Movies.isInWatchlist(coupleId, movieId),
         Movies.isInFavorites(coupleId, movieId),
         Movies.isWatched(coupleId, movieId)
       ]);
 
-      setupStarInput(stars);
+      setupStarInput(myStars);
       document.getElementById('btn-toggle-watchlist').classList.toggle('active', inWatchlist);
       document.getElementById('btn-toggle-favorite').classList.toggle('active', inFav);
 
-      const watchedBtn = document.getElementById('btn-mark-watched');
-      watchedBtn.innerHTML = watched ? '<i class="fa-solid fa-check"></i> Assistido!' : '<i class="fa-solid fa-check"></i> Marcar como assistido';
-      watchedBtn.disabled = watched;
+      // Exibir notas individuais e média
+      _updateCoupleRatingsInfo(myStars, partnerStars);
+
+      // Botão assistido — toggle marcar/remover
+      _updateWatchedBtn(watched);
 
       // Regra de negócio: só pode avaliar se já assistiu
-      const starsInput   = document.getElementById('stars-input');
-      const rateBtn      = document.getElementById('btn-rate-movie');
+      const starsInput    = document.getElementById('stars-input');
+      const rateBtn       = document.getElementById('btn-rate-movie');
       const ratingDisplay = document.getElementById('rating-display');
       if (!watched) {
         starsInput.style.pointerEvents = 'none';
@@ -488,25 +497,40 @@ async function openMovieDetail(movieId, readOnly = false) {
         showLoading(true);
         await Movies.rateMovie(coupleId, movieId, selected);
         showToast(`Avaliado com ${selected} ⭐`);
-        document.getElementById('rating-display').textContent = `Avaliação atual: ${selected} de 5 estrelas`;
+        document.getElementById('rating-display').textContent = `Sua nota: ${selected} de 5`;
+        // Atualizar info do casal com nova nota
+        const partnerStars2 = partnerUid ? await Movies.getPartnerRating(coupleId, movieId, partnerUid) : null;
+        _updateCoupleRatingsInfo(selected, partnerStars2);
       } catch(e) { showToast(e.message); }
       finally { showLoading(false); }
     };
 
     document.getElementById('btn-mark-watched').onclick = async () => {
       if (!coupleId) { showToast('Conecte-se a um parceiro primeiro'); return; }
+      const currentlyWatched = document.getElementById('btn-mark-watched').dataset.watched === '1';
       try {
         showLoading(true);
-        await Movies.markWatched(coupleId, movieId);
-        document.getElementById('btn-mark-watched').innerHTML = '<i class="fa-solid fa-check"></i> Assistido!';
-        document.getElementById('btn-mark-watched').disabled = true;
-        showToast('Marcado como assistido!');
-        // Desbloquear avaliação
-        const si = document.getElementById('stars-input');
-        si.style.pointerEvents = '';
-        si.style.opacity = '';
-        document.getElementById('btn-rate-movie').disabled = false;
-        document.getElementById('rating-display').textContent = 'Sem avaliação ainda';
+        if (currentlyWatched) {
+          await Movies.removeFromWatched(coupleId, movieId);
+          showToast('Removido dos assistidos');
+          _updateWatchedBtn(false);
+          // Bloquear avaliação novamente
+          const si = document.getElementById('stars-input');
+          si.style.pointerEvents = 'none';
+          si.style.opacity = '0.35';
+          document.getElementById('btn-rate-movie').disabled = true;
+          document.getElementById('rating-display').textContent = 'Marque como assistido para avaliar';
+        } else {
+          await Movies.markWatched(coupleId, movieId);
+          showToast('Marcado como assistido!');
+          _updateWatchedBtn(true);
+          // Desbloquear avaliação
+          const si = document.getElementById('stars-input');
+          si.style.pointerEvents = '';
+          si.style.opacity = '';
+          document.getElementById('btn-rate-movie').disabled = false;
+          document.getElementById('rating-display').textContent = 'Sem avaliação ainda';
+        }
       } catch(e) { showToast(e.message); }
       finally { showLoading(false); }
     };
@@ -542,6 +566,31 @@ async function openMovieDetail(movieId, readOnly = false) {
   } finally {
     showLoading(false);
   }
+}
+
+function _updateWatchedBtn(watched) {
+  const btn = document.getElementById('btn-mark-watched');
+  if (!btn) return;
+  btn.dataset.watched = watched ? '1' : '0';
+  if (watched) {
+    btn.className = 'btn btn-ghost btn-sm';
+    btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i> Remover dos assistidos';
+  } else {
+    btn.className = 'btn btn-success';
+    btn.innerHTML = '<i class="fa-solid fa-check"></i> Marcar como assistido';
+  }
+}
+
+function _updateCoupleRatingsInfo(myStars, partnerStars) {
+  const el = document.getElementById('couple-ratings-info');
+  if (!el) return;
+  if (!myStars && partnerStars === null) { el.textContent = ''; return; }
+  const myText      = myStars      ? `Você: ${myStars}★` : 'Você: ainda não avaliou';
+  const partnerText = partnerStars !== null ? `Parceiro(a): ${partnerStars}★` : 'Parceiro(a): ainda não avaliou';
+  const avg = (myStars && partnerStars !== null)
+    ? `Média do casal: ${((myStars + partnerStars) / 2).toFixed(1)}★`
+    : '';
+  el.innerHTML = [myText, partnerText, avg].filter(Boolean).join(' &nbsp;|&nbsp; ');
 }
 
 function setupStarInput(currentVal) {
@@ -687,7 +736,7 @@ async function initWatchlistView() {
   try {
     const items = await Movies.getWatchlist(coupleId);
     if (!items.length) {
-      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem2.png" class="empty-mascot"/><p>Nenhum filme na watchlist ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
+      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem.png" class="empty-mascot"/><p>Nenhum filme na watchlist ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
       return;
     }
     container.innerHTML = '';
@@ -715,7 +764,7 @@ async function initFavoritesView() {
   try {
     const items = await Movies.getFavorites(coupleId);
     if (!items.length) {
-      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem2.png" class="empty-mascot"/><p>Nenhum favorito ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
+      container.innerHTML = `<div class="feed-empty"><img src="refs/personagem.png" class="empty-mascot"/><p>Nenhum favorito ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
       return;
     }
     container.innerHTML = '';
