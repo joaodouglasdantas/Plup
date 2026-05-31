@@ -401,9 +401,13 @@ function renderMoviesGrid(movies) {
 }
 
 // ── DETALHE DO FILME ───────────────────────────
-async function openMovieDetail(movieId) {
+async function openMovieDetail(movieId, readOnly = false) {
   AppState.currentMovieId = movieId;
   navigateTo('movie-detail');
+
+  // Mostrar/ocultar ações conforme contexto
+  document.querySelector('.movie-detail-actions').style.display = readOnly ? 'none' : '';
+  document.querySelector('.rating-section').style.display       = readOnly ? 'none' : '';
 
   showLoading(true);
   try {
@@ -426,7 +430,7 @@ async function openMovieDetail(movieId) {
     document.getElementById('movie-detail-age').textContent = age?.label || '';
 
     const coupleId = AppState.coupleDoc?.id;
-    if (coupleId) {
+    if (coupleId && !readOnly) {
       const [stars, inWatchlist, inFav, watched] = await Promise.all([
         Movies.getRating(coupleId, movieId),
         Movies.isInWatchlist(coupleId, movieId),
@@ -443,8 +447,26 @@ async function openMovieDetail(movieId) {
       watchedBtn.disabled = watched;
     }
 
-    document.getElementById('movie-added-by').textContent =
-      `Adicionado por ${movie.addedByName || 'alguém'}`;
+    // "Adicionado pelo casal X & Y" clicável
+    const addedByEl = document.getElementById('movie-added-by');
+    if (movie.addedByCoupleId) {
+      addedByEl.innerHTML = 'Adicionado pelo casal <span class="couple-link" style="cursor:pointer;color:var(--blue);font-weight:700;text-decoration:underline">carregando...</span>';
+      const coupleDoc = await Couple.getCoupleDoc(movie.addedByCoupleId);
+      if (coupleDoc) {
+        const [u1, u2] = await Promise.all([Auth.fetchUserDoc(coupleDoc.user1), Auth.fetchUserDoc(coupleDoc.user2)]);
+        const coupleName = `${u1?.name || '?'} & ${u2?.name || '?'}`;
+        const link = addedByEl.querySelector('.couple-link');
+        link.textContent = coupleName;
+        link.onclick = () => {
+          const isOwn = movie.addedByCoupleId === AppState.coupleDoc?.id;
+          navigateTo('profile', { coupleId: movie.addedByCoupleId, isOwn });
+        };
+      } else {
+        addedByEl.textContent = `Adicionado por ${movie.addedByName || 'alguém'}`;
+      }
+    } else {
+      addedByEl.textContent = `Adicionado por ${movie.addedByName || 'alguém'}`;
+    }
 
     // Botões de ação
     document.getElementById('btn-rate-movie').onclick = async () => {
