@@ -48,6 +48,38 @@ const Feed = (() => {
       });
   }
 
+  // ── Realtime feed (todos os casais seguidos) ──
+  // Sem orderBy → sem índice composto necessário; ordena client-side
+  function onFeed(coupleIds, callback) {
+    const pool = {};  // id → evento
+    const listeners = [];
+
+    function emit() {
+      const sorted = Object.values(pool)
+        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
+        .slice(0, 30);
+      callback(sorted);
+    }
+
+    const chunks = [];
+    for (let i = 0; i < coupleIds.length; i += 10) chunks.push(coupleIds.slice(i, i + 10));
+
+    for (const chunk of chunks) {
+      const unsub = db.collection('feed')
+        .where('coupleId', 'in', chunk)
+        .onSnapshot(snap => {
+          snap.docChanges().forEach(ch => {
+            if (ch.type === 'removed') delete pool[ch.doc.id];
+            else pool[ch.doc.id] = { id: ch.doc.id, ...ch.doc.data() };
+          });
+          emit();
+        }, err => console.error('feed listener:', err));
+      listeners.push(unsub);
+    }
+
+    return () => listeners.forEach(fn => fn());
+  }
+
   // ── Renderizar card de feed ───────────────
   async function renderFeedCard(event, coupleDoc, categoriesMap) {
     const card = document.createElement('div');
@@ -159,7 +191,7 @@ const Feed = (() => {
   }
 
   return {
-    loadFeed, onOwnFeed, renderFeedCard,
+    loadFeed, onOwnFeed, onFeed, renderFeedCard,
     onNotifications, markNotifRead, markAllNotifsRead
   };
 })();

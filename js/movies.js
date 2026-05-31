@@ -12,10 +12,9 @@ const Movies = (() => {
     });
   }
 
-  async function addCategory(name, icon, color) {
+  async function addCategory(name, color) {
     await db.collection('categories').add({
-      name, icon: icon || '🎬',
-      color: color || '',
+      name, color: color || '',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   }
@@ -83,15 +82,34 @@ const Movies = (() => {
     return docRef.id;
   }
 
-  // ── Listar filmes ─────────────────────────
-  function onMovies(categoryId, callback) {
-    let query = db.collection('movies').where('approved', '==', true).orderBy('createdAt', 'desc');
-    if (categoryId && categoryId !== 'all') {
-      query = query.where('categoryId', '==', categoryId);
+  // ── Editar filme ──────────────────────────
+  async function updateMovie(movieId, data, coverFile) {
+    const updates = {
+      title:       data.title.trim(),
+      description: data.description.trim(),
+      categoryId:  data.categoryId,
+      ageRatingId: data.ageRatingId,
+      updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (coverFile) {
+      const ref = storage.ref(`covers/${Date.now()}_${coverFile.name}`);
+      await ref.put(coverFile);
+      updates.coverUrl = await ref.getDownloadURL();
     }
-    return query.onSnapshot(snap => {
-      callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
+
+    await db.collection('movies').doc(movieId).update(updates);
+  }
+
+  // ── Listar filmes ─────────────────────────
+  function onMovies(callback) {
+    return db.collection('movies')
+      .where('approved', '==', true)
+      .onSnapshot(snap => {
+        const movies = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        callback(movies);
+      });
   }
 
   async function searchMovies(text) {
@@ -279,7 +297,7 @@ const Movies = (() => {
   return {
     onCategories, addCategory, deleteCategory,
     onAgeRatings, addAgeRating, deleteAgeRating,
-    addMovie, onMovies, searchMovies, getMovie,
+    addMovie, updateMovie, onMovies, searchMovies, getMovie,
     rateMovie, getRating, getPartnerRating,
     markWatched, removeFromWatched, isWatched, getWatched,
     addToWatchlist, removeFromWatchlist, isInWatchlist, getWatchlist,

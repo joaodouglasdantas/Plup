@@ -38,12 +38,10 @@ const Admin = (() => {
       const list = document.getElementById('categories-list');
       if (!cats.length) { list.innerHTML = '<p class="empty-text">Nenhuma categoria cadastrada</p>'; return; }
       list.innerHTML = cats.map(c => {
-        const iconHtml = c.icon?.startsWith('fa-') ? `<i class="fa-solid ${c.icon}"></i>` : (c.icon || '🎬');
-        const colorDot = c.color ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c.color};flex-shrink:0;"></span>` : '';
+        const badge = `<span class="badge-age" style="background:${c.color || 'var(--cyan-l)'};color:${c.color ? '#fff' : 'var(--navy)'}">${c.name}</span>`;
         return `
           <div class="admin-item">
-            ${colorDot}
-            <span>${iconHtml}</span>
+            ${badge}
             <span class="admin-item-name">${c.name}</span>
             <button class="admin-item-delete" data-id="${c.id}" onclick="Admin.deleteCategory('${c.id}')">🗑️</button>
           </div>
@@ -53,11 +51,10 @@ const Admin = (() => {
 
     document.getElementById('btn-add-category').onclick = async () => {
       const name = document.getElementById('new-category-name').value.trim();
-      const icon = document.getElementById('new-category-icon').value.trim();
       const color = document.getElementById('new-category-color').value;
       if (!name) { showToast('Digite o nome da categoria'); return; }
       try {
-        await Movies.addCategory(name, icon || '🎬', color);
+        await Movies.addCategory(name, color);
         document.getElementById('new-category-name').value = '';
         document.getElementById('new-category-icon').value = '';
         showToast('Categoria adicionada! ✅');
@@ -106,19 +103,21 @@ const Admin = (() => {
   // ── Denúncias ─────────────────────────────
   function loadReports() {
     db.collection('reports').where('status', '==', 'pending')
-      .orderBy('createdAt', 'desc').onSnapshot(async snap => {
+      .onSnapshot(async snap => {
         const list = document.getElementById('reports-list');
         if (snap.empty) {
           list.innerHTML = '<p class="empty-text">Nenhuma denúncia pendente 🎉</p>';
           return;
         }
         list.innerHTML = '';
-        for (const doc of snap.docs) {
+        const sortedDocs = snap.docs.slice().sort((a, b) =>
+          (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0));
+        for (const doc of sortedDocs) {
           const report = { id: doc.id, ...doc.data() };
           let targetInfo = '';
           if (report.type === 'movie') {
             const movie = await Movies.getMovie(report.targetId);
-            targetInfo = `Filme: <strong>${movie?.title || report.targetId}</strong>`;
+            targetInfo = `Filme: <strong class="report-movie-link" style="cursor:pointer;color:var(--blue);text-decoration:underline" onclick="openMovieDetail('${report.targetId}')">${movie?.title || report.targetId}</strong>`;
           } else {
             targetInfo = `Casal ID: ${report.targetId}`;
           }

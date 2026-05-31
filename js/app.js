@@ -15,6 +15,7 @@ const AppState = {
   categories:   [],
   ageRatings:   [],
   currentMovieId: null,
+  editingMovieId: null,
 
   // Unsubscribes dos listeners realtime
   _unsubs: []
@@ -264,34 +265,42 @@ async function initFeedView() {
 
   updateCoupleQuickCard(AppState.coupleDoc);
 
-  // Carregar feed
+  // Cancelar listener anterior
+  if (AppState._feedUnsub) { AppState._feedUnsub(); AppState._feedUnsub = null; }
+
   showLoading(true);
+  let firstEmit = true;
+
   try {
-    const events = await Feed.loadFeed(coupleId, 30);
-    const container = document.getElementById('feed-list');
+    const followingIds = await Couple.getFollowing(coupleId);
+    const allIds = [coupleId, ...followingIds];
 
-    if (!events.length) {
-      container.innerHTML = `
-        <div class="feed-empty">
-          <img src="refs/personagem.png" alt="" class="empty-mascot" />
-          <p>Siga outros casais para ver o que estão assistindo!</p>
-          <button class="btn btn-primary" data-nav="discover">
-            <i class="fa-solid fa-compass"></i> Descobrir casais
-          </button>
-        </div>`;
-      return;
-    }
+    AppState._feedUnsub = Feed.onFeed(allIds, async (events) => {
+      if (firstEmit) { showLoading(false); firstEmit = false; }
 
-    container.innerHTML = '';
-    for (const ev of events) {
-      const coupleDoc = await Couple.getCoupleDoc(ev.coupleId);
-      if (!coupleDoc) continue;
-      const card = await Feed.renderFeedCard(ev, coupleDoc, AppState.categories);
-      container.appendChild(card);
-    }
+      const container = document.getElementById('feed-list');
+      if (!events.length) {
+        container.innerHTML = `
+          <div class="feed-empty">
+            <img src="refs/personagem.png" alt="" class="empty-mascot" />
+            <p>Siga outros casais para ver o que estão assistindo!</p>
+            <button class="btn btn-primary" data-nav="discover">
+              <i class="fa-solid fa-compass"></i> Descobrir casais
+            </button>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = '';
+      for (const ev of events) {
+        const coupleDoc = await Couple.getCoupleDoc(ev.coupleId);
+        if (!coupleDoc) continue;
+        const card = await Feed.renderFeedCard(ev, coupleDoc, AppState.categories);
+        container.appendChild(card);
+      }
+    });
   } catch(e) {
     console.error(e);
-  } finally {
     showLoading(false);
   }
 }
@@ -324,8 +333,9 @@ let _moviesAll   = [];
 let _currentCat  = 'all';
 
 function initMoviesView() {
+  _currentCat = 'all';
   renderCategoryChips();
-  loadMoviesGrid('all');
+  loadMoviesGrid('all'); // listener persiste entre visitas — só refiltra se já ativo
 
   const searchInput = document.getElementById('movies-search');
   let searchTimeout;
@@ -355,7 +365,7 @@ function renderCategoryChips() {
   const allChip = `<button class="chip ${_currentCat === 'all' ? 'active' : ''}" data-cat="all">Todos</button>`;
   const catChips = cats.map(c => {
     const dot = c.color ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;"></span>` : '';
-    return `<button class="chip ${_currentCat === c.id ? 'active' : ''}" data-cat="${c.id}">${dot}${_renderIcon(c.icon)} ${c.name}</button>`;
+    return `<button class="chip ${_currentCat === c.id ? 'active' : ''}" data-cat="${c.id}">${dot} ${c.name}</button>`;
   }).join('');
   container.innerHTML = allChip + catChips;
 
@@ -370,11 +380,19 @@ function renderCategoryChips() {
 }
 
 function loadMoviesGrid(catId) {
-  if (_moviesUnsub) { _moviesUnsub(); _moviesUnsub = null; }
-  _moviesUnsub = Movies.onMovies(catId, movies => {
-    _moviesAll = movies;
-    renderMoviesGrid(movies);
-  });
+  _currentCat = catId;
+  if (_moviesUnsub) {
+    // Listener já ativo — só refiltra client-side
+    const filtered = catId === 'all' ? _moviesAll : _moviesAll.filter(m => m.categoryId === catId);
+    renderMoviesGrid(filtered);
+  } else {
+    // Primeiro acesso — abre listener para TODOS os filmes
+    _moviesUnsub = Movies.onMovies(movies => {
+      _moviesAll = movies;
+      const filtered = _currentCat === 'all' ? movies : movies.filter(m => m.categoryId === _currentCat);
+      renderMoviesGrid(filtered);
+    });
+  }
 }
 
 function renderMoviesGrid(movies) {
@@ -393,7 +411,7 @@ function renderMoviesGrid(movies) {
           : `<div class="movie-card-cover"></div>`}
         <div class="movie-card-info">
           <div class="movie-card-title">${m.title}</div>
-          <div class="movie-card-cat">${cat ? `${cat.color ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${cat.color};vertical-align:middle;margin-right:2px;"></span>` : ''}${_renderIcon(cat.icon)} ${cat.name}` : ''}</div>
+          <div class="movie-card-cat">${cat ? `<span class="badge-cat-card" ${cat.color ? `style="background:${cat.color};color:#fff"` : ''}>${cat.name}</span>` : ''}</div>
         </div>
       </div>
     `;
@@ -417,6 +435,12 @@ async function openMovieDetail(movieId, readOnly = false) {
     document.getElementById('movie-detail-title').textContent = movie.title;
     document.getElementById('movie-detail-desc').textContent  = movie.description;
 
+    // Botão editar — visível apenas para o casal que adicionou o filme
+    const editBtn = document.getElementById('btn-edit-movie');
+    const canEdit = !readOnly && movie.addedByCoupleId === AppState.coupleDoc?.id;
+    editBtn.classList.toggle('hidden', !canEdit);
+    editBtn.onclick = canEdit ? () => openEditMovie(movie) : null;
+
     const coverEl = document.getElementById('movie-cover-large');
     coverEl.src = movie.coverUrl || '';
     coverEl.style.display = movie.coverUrl ? '' : 'none';
@@ -424,7 +448,7 @@ async function openMovieDetail(movieId, readOnly = false) {
     const cat = AppState.categories.find(c => c.id === movie.categoryId);
     const age = AppState.ageRatings.find(a => a.id === movie.ageRatingId);
     const catEl = document.getElementById('movie-detail-cat');
-    catEl.innerHTML = cat ? `${_renderIcon(cat.icon)} ${cat.name}` : '—';
+    catEl.innerHTML = cat ? cat.name : '—';
     if (cat?.color) { catEl.style.background = cat.color; catEl.style.color = '#fff'; }
     else { catEl.style.background = ''; catEl.style.color = ''; }
     document.getElementById('movie-detail-age').textContent = age?.label || '';
@@ -658,44 +682,91 @@ function setupStarInput(currentVal) {
   if (currentVal) display.textContent = `Avaliação atual: ${currentVal} de 5 estrelas`;
 }
 
-// ── ADICIONAR FILME ────────────────────────────
+// ── ADICIONAR / EDITAR FILME ───────────────────
+let _prefillEditForm = null;
+let _resetAddMovieForm = null;
+
 (function setupAddMovie() {
-  const uploadArea   = document.getElementById('cover-upload-area');
-  const fileInput    = document.getElementById('cover-file');
-  const placeholder  = document.getElementById('cover-placeholder');
-  const preview      = document.getElementById('cover-preview');
-  let _coverFile     = null;
+  const uploadArea  = document.getElementById('cover-upload-area');
+  const fileInput   = document.getElementById('cover-file');
+  const placeholder = document.getElementById('cover-placeholder');
+  const preview     = document.getElementById('cover-preview');
+  const titleH2     = document.querySelector('#view-add-movie .top-bar h2');
+  const submitBtn   = document.querySelector('#form-add-movie [type="submit"]');
+  let _coverFile    = null;
 
   uploadArea.addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', e => {
     _coverFile = e.target.files[0];
     if (_coverFile) {
-      const url = URL.createObjectURL(_coverFile);
-      preview.src = url;
+      preview.src = URL.createObjectURL(_coverFile);
       preview.classList.remove('hidden');
       placeholder.style.display = 'none';
     }
   });
 
+  // Expor reset para uso externo
+  _resetAddMovieForm = () => {
+    _coverFile = null;
+    document.getElementById('form-add-movie').reset();
+    preview.src = '';
+    preview.classList.add('hidden');
+    placeholder.style.display = '';
+    titleH2.textContent  = 'Adicionar Filme';
+    submitBtn.innerHTML  = '<i class="fa-solid fa-upload"></i> Publicar Filme';
+  };
+
+  // Expor pré-preenchimento para modo edição
+  _prefillEditForm = (movie) => {
+    _coverFile = null;
+    document.getElementById('movie-title').value      = movie.title       || '';
+    document.getElementById('movie-desc-input').value = movie.description || '';
+    // selects carregados async — aguardar um tick
+    setTimeout(() => {
+      document.getElementById('movie-category').value = movie.categoryId  || '';
+      document.getElementById('movie-age').value      = movie.ageRatingId || '';
+    }, 100);
+    if (movie.coverUrl) {
+      preview.src = movie.coverUrl;
+      preview.classList.remove('hidden');
+      placeholder.style.display = 'none';
+    } else {
+      preview.src = '';
+      preview.classList.add('hidden');
+      placeholder.style.display = '';
+    }
+    titleH2.textContent = 'Editar Filme';
+    submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar alterações';
+  };
+
   // Preencher selects com categorias e idades
   Movies.onCategories(cats => {
     const sel = document.getElementById('movie-category');
-    const current = sel.value;
+    const cur = sel.value;
     sel.innerHTML = '<option value="">Selecionar categoria</option>';
-    cats.forEach(c => {
-      sel.innerHTML += `<option value="${c.id}">${c.icon} ${c.name}</option>`;
-    });
-    sel.value = current;
+    cats.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.icon} ${c.name}</option>`; });
+    sel.value = cur;
   });
 
   Movies.onAgeRatings(ages => {
     const sel = document.getElementById('movie-age');
-    const current = sel.value;
+    const cur = sel.value;
     sel.innerHTML = '<option value="">Classificação etária</option>';
-    ages.forEach(a => {
-      sel.innerHTML += `<option value="${a.id}">${a.label}</option>`;
-    });
-    sel.value = current;
+    ages.forEach(a => { sel.innerHTML += `<option value="${a.id}">${a.label}</option>`; });
+    sel.value = cur;
+  });
+
+  // Botão voltar — respeita modo edição
+  document.getElementById('add-movie-back').addEventListener('click', () => {
+    if (AppState.editingMovieId) {
+      const id = AppState.editingMovieId;
+      AppState.editingMovieId = null;
+      _resetAddMovieForm();
+      navigateTo('movie-detail');
+      openMovieDetail(id);
+    } else {
+      navigateTo(AppState.prevView || 'movies');
+    }
   });
 
   document.getElementById('form-add-movie').addEventListener('submit', async e => {
@@ -711,13 +782,20 @@ function setupStarInput(currentVal) {
 
     try {
       showLoading(true);
-      await Movies.addMovie(data, _coverFile);
-      showToast('Filme publicado!');
-      document.getElementById('form-add-movie').reset();
-      preview.classList.add('hidden');
-      placeholder.style.display = '';
-      _coverFile = null;
-      navigateTo('movies');
+      if (AppState.editingMovieId) {
+        await Movies.updateMovie(AppState.editingMovieId, data, _coverFile || null);
+        showToast('Filme atualizado! ✅');
+        const editedId = AppState.editingMovieId;
+        AppState.editingMovieId = null;
+        _resetAddMovieForm();
+        navigateTo('movie-detail');
+        openMovieDetail(editedId);
+      } else {
+        await Movies.addMovie(data, _coverFile);
+        showToast('Filme publicado! 🎬');
+        _resetAddMovieForm();
+        navigateTo('movies');
+      }
     } catch(err) {
       showToast(err.message);
     } finally {
@@ -725,6 +803,12 @@ function setupStarInput(currentVal) {
     }
   });
 })();
+
+function openEditMovie(movie) {
+  AppState.editingMovieId = movie.id;
+  _prefillEditForm(movie);
+  navigateTo('add-movie');
+}
 
 // ── WATCHLIST ──────────────────────────────────
 async function initWatchlistView() {
@@ -789,7 +873,7 @@ function buildListMovieItem(movie, onRemove) {
       : `<div class="list-movie-thumb"></div>`}
     <div class="list-movie-info">
       <div class="list-movie-title">${movie.title}</div>
-      <div class="list-movie-cat">${cat ? `${cat.color ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${cat.color};vertical-align:middle;margin-right:2px;"></span>` : ''}${_renderIcon(cat.icon)} ${cat.name}` : ''}</div>
+      <div class="list-movie-cat">${cat ? `<span class="badge-cat-card" ${cat.color ? `style="background:${cat.color};color:#fff"` : ''}>${cat.name}</span>` : ''}</div>
     </div>
     <button class="list-movie-remove">🗑️</button>
   `;

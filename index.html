@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Plup — Filmes em Casal</title>
+  <link rel="icon" href="refs/logominimalista.png" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
@@ -97,7 +98,6 @@
         <div class="wave wave3"></div>
       </div>
       <div class="auth-brand-content">
-        <img src="refs/logo.png" alt="Plup" class="auth-brand-logo" />
         <img src="refs/personagem.png" alt="Mascote" class="auth-brand-mascot" />
         <h2 class="auth-brand-title">Filmes são melhores em dois</h2>
         <p class="auth-brand-sub">Avalie, descubra e compartilhe filmes com seu parceiro(a)</p>
@@ -313,6 +313,9 @@
               </div>
             </div>
             <div class="movie-detail-actions">
+              <button class="btn-icon-lg hidden" id="btn-edit-movie" title="Editar filme">
+                <i class="fa-solid fa-pen"></i>
+              </button>
               <button class="btn-icon-lg" id="btn-toggle-watchlist" title="Ver depois">
                 <i class="fa-solid fa-clock"></i>
               </button>
@@ -549,7 +552,6 @@
             <h3>Categorias de filmes</h3>
             <div class="input-row">
               <input type="text" id="new-category-name" placeholder="Nome da categoria" />
-              <input type="text" id="new-category-icon" placeholder="Ícone (ex: fa-film)" />
               <input type="color" id="new-category-color" value="#0077B6" title="Cor da categoria" />
               <button class="btn btn-primary btn-sm" id="btn-add-category">
                 <i class="fa-solid fa-plus"></i> Adicionar
