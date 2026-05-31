@@ -418,9 +418,9 @@ function renderMoviesGrid(movies) {
 }
 
 // ── DETALHE DO FILME ───────────────────────────
-async function openMovieDetail(movieId, readOnly = false) {
+async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
   AppState.currentMovieId = movieId;
-  navigateTo('movie-detail');
+  if (!skipNav) navigateTo('movie-detail');
 
   // Mostrar/ocultar ações conforme contexto
   document.querySelector('.movie-detail-actions').style.display = readOnly ? 'none' : '';
@@ -786,8 +786,8 @@ let _resetAddMovieForm = null;
       AppState.editingMovieId = null;
       _resetAddMovieForm();
       navigateTo('movie-detail');
-      AppState.prevView = AppState._preEditPrevView || 'movies'; // restaura destino correto
-      openMovieDetail(id);
+      AppState.prevView = AppState._preEditPrevView || 'movies';
+      openMovieDetail(id, false, true); // skipNav: já estamos em movie-detail
     } else {
       navigateTo(AppState.prevView || 'movies');
     }
@@ -814,7 +814,7 @@ let _resetAddMovieForm = null;
         _resetAddMovieForm();
         navigateTo('movie-detail');
         AppState.prevView = AppState._preEditPrevView || 'movies';
-        openMovieDetail(editedId);
+        openMovieDetail(editedId, false, true); // skipNav: já estamos em movie-detail
       } else {
         await Movies.addMovie(data, _coverFile);
         showToast('Filme publicado! 🎬');
