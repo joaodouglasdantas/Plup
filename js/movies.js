@@ -91,11 +91,12 @@ const Movies = (() => {
     }
 
     const docRef = await db.collection('movies').add({
-      title:       data.title.trim(),
-      description: data.description.trim(),
-      categoryId:  data.categoryId,
-      ageRatingId: data.ageRatingId,
+      title:          data.title.trim(),
+      description:    data.description.trim(),
+      categoryId:     data.categoryId,
+      ageRatingId:    data.ageRatingId,
       coverUrl,
+      coverPosition:  data.coverPosition || '50% 50%',
       addedBy:     uid,
       addedByName: userDoc.name,
       addedByCoupleId: userDoc.coupleId || null,
@@ -124,11 +125,12 @@ const Movies = (() => {
   // ── Editar filme ──────────────────────────
   async function updateMovie(movieId, data, coverFile) {
     const updates = {
-      title:       data.title.trim(),
-      description: data.description.trim(),
-      categoryId:  data.categoryId,
-      ageRatingId: data.ageRatingId,
-      updatedAt:   firebase.firestore.FieldValue.serverTimestamp()
+      title:         data.title.trim(),
+      description:   data.description.trim(),
+      categoryId:    data.categoryId,
+      ageRatingId:   data.ageRatingId,
+      coverPosition: data.coverPosition || '50% 50%',
+      updatedAt:     firebase.firestore.FieldValue.serverTimestamp()
     };
 
     if (coverFile) {
@@ -344,9 +346,41 @@ const Movies = (() => {
     });
   }
 
-  // ── Admin: deletar filme ──────────────────
+  // ── Helper: deletar lote de docs (máx 500 por batch) ─
+  async function _batchDelete(docs) {
+    for (let i = 0; i < docs.length; i += 500) {
+      const batch = db.batch();
+      docs.slice(i, i + 500).forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    }
+  }
+
+  // ── Admin: deletar filme (cascade) ───────
   async function deleteMovie(movieId) {
+    // Buscar doc para pegar coverUrl antes de deletar
+    const movieSnap = await db.collection('movies').doc(movieId).get();
+    const coverUrl = movieSnap.exists ? movieSnap.data().coverUrl : null;
+
+    // Deletar em paralelo todas as coleções que referenciam movieId
+    const collectionsWithMovieId = ['feed', 'watchlist', 'favorites', 'watched', 'ratings', 'notifications'];
+    await Promise.all(
+      collectionsWithMovieId.map(col =>
+        db.collection(col).where('movieId', '==', movieId).get()
+          .then(snap => snap.empty ? null : _batchDelete(snap.docs))
+      )
+    );
+
+    // Denúncias do filme
+    const reportsSnap = await db.collection('reports').where('targetId', '==', movieId).get();
+    if (!reportsSnap.empty) await _batchDelete(reportsSnap.docs);
+
+    // Deletar documento do filme
     await db.collection('movies').doc(movieId).delete();
+
+    // Deletar capa do Storage (best-effort)
+    if (coverUrl) {
+      try { await storage.refFromURL(coverUrl).delete(); } catch(_) {}
+    }
   }
 
   // ── Admin: aprovar/reprovar ───────────────

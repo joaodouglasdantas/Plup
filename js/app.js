@@ -258,6 +258,8 @@ function setupGlobalEventListeners() {
 // ════════════════════════════════════════════════
 
 // ── FEED ──────────────────────────────────────
+let _feedRenderGen = 0;
+
 async function initFeedView() {
   const coupleId = AppState.coupleDoc?.id;
   if (!coupleId) return;
@@ -275,6 +277,7 @@ async function initFeedView() {
     const allIds = [coupleId, ...followingIds];
 
     AppState._feedUnsub = Feed.onFeed(allIds, async (events) => {
+      const gen = ++_feedRenderGen;
       if (firstEmit) { showLoading(false); firstEmit = false; }
 
       const container = document.getElementById('feed-list');
@@ -293,8 +296,22 @@ async function initFeedView() {
       container.innerHTML = '';
       for (const ev of events) {
         const coupleDoc = await Couple.getCoupleDoc(ev.coupleId);
+        if (gen !== _feedRenderGen) return;
         if (!coupleDoc) continue;
+
+        // Se o evento referencia um filme, verificar se ele ainda existe
+        if (ev.movieId) {
+          const movie = await Movies.getMovie(ev.movieId);
+          if (gen !== _feedRenderGen) return;
+          if (!movie) {
+            // Filme deletado: limpar doc órfão do feed silenciosamente
+            db.collection('feed').doc(ev.id).delete().catch(() => {});
+            continue;
+          }
+        }
+
         const card = await Feed.renderFeedCard(ev, coupleDoc, AppState.categories);
+        if (gen !== _feedRenderGen) return;
         container.appendChild(card);
       }
     });
@@ -321,8 +338,8 @@ function updateCoupleQuickCard(doc) {
 
     const a1 = document.getElementById('cqc-avatar1');
     const a2 = document.getElementById('cqc-avatar2');
-    if (a1) a1.innerHTML = u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
-    if (a2) a2.innerHTML = u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
+    if (a1) a1.innerHTML = _avatarImg(u1);
+    if (a2) a2.innerHTML = _avatarImg(u2);
   });
 }
 
@@ -406,7 +423,7 @@ function renderMoviesGrid(movies) {
     return `
       <div class="movie-card" onclick="openMovieDetail('${m.id}')">
         ${m.coverUrl
-          ? `<img class="movie-card-cover" src="${m.coverUrl}" alt="${m.title}" loading="lazy" />`
+          ? `<img class="movie-card-cover" src="${m.coverUrl}" alt="${m.title}" loading="lazy" style="object-position:${m.coverPosition||'50% 50%'}" />`
           : `<div class="movie-card-cover"></div>`}
         <div class="movie-card-info">
           <div class="movie-card-title">${m.title}</div>
@@ -442,6 +459,7 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
 
     const coverEl = document.getElementById('movie-cover-large');
     coverEl.src = movie.coverUrl || '';
+    coverEl.style.objectPosition = movie.coverPosition || '50% 50%';
     coverEl.style.display = movie.coverUrl ? '' : 'none';
 
     const cat = AppState.categories.find(c => c.id === movie.categoryId);
@@ -693,18 +711,94 @@ let _resetAddMovieForm = null;
   const fileInput   = document.getElementById('cover-file');
   const placeholder = document.getElementById('cover-placeholder');
   const preview     = document.getElementById('cover-preview');
+  const hint        = document.getElementById('cover-reposition-hint');
   const titleH2     = document.querySelector('#view-add-movie .top-bar h2');
   const submitBtn   = document.querySelector('#form-add-movie [type="submit"]');
   let _coverFile    = null;
+  let _coverPos     = '50% 50%';
+  let _dragging     = false;
+  let _didDrag      = false;
+  let _dragStart    = { x: 0, y: 0 };
+  let _posStart     = { x: 50, y: 50 };
 
-  uploadArea.addEventListener('click', () => fileInput.click());
+  function _showCover(src, pos) {
+    preview.src = src;
+    _coverPos = pos || '50% 50%';
+    preview.style.objectPosition = _coverPos;
+    preview.classList.remove('hidden');
+    preview.classList.add('draggable');
+    placeholder.style.display = 'none';
+    hint.classList.remove('hidden');
+  }
+
+  function _hideCover() {
+    preview.src = '';
+    preview.classList.add('hidden');
+    preview.classList.remove('draggable', 'dragging');
+    placeholder.style.display = '';
+    hint.classList.add('hidden');
+    _coverPos = '50% 50%';
+  }
+
+  // Drag para reposicionar (mouse)
+  preview.addEventListener('mousedown', e => {
+    if (preview.classList.contains('hidden')) return;
+    e.preventDefault();
+    _dragging = true;
+    _didDrag  = false;
+    _dragStart = { x: e.clientX, y: e.clientY };
+    const p = _coverPos.split(' ');
+    _posStart = { x: parseFloat(p[0]), y: parseFloat(p[1]) };
+    preview.classList.add('dragging');
+  });
+  document.addEventListener('mousemove', e => {
+    if (!_dragging) return;
+    const dx = Math.abs(e.clientX - _dragStart.x);
+    const dy = Math.abs(e.clientY - _dragStart.y);
+    if (dx > 3 || dy > 3) _didDrag = true;
+    const rect = preview.getBoundingClientRect();
+    const nx = Math.max(0, Math.min(100, _posStart.x - (e.clientX - _dragStart.x) / rect.width * 100));
+    const ny = Math.max(0, Math.min(100, _posStart.y - (e.clientY - _dragStart.y) / rect.height * 100));
+    _coverPos = `${nx.toFixed(1)}% ${ny.toFixed(1)}%`;
+    preview.style.objectPosition = _coverPos;
+  });
+  document.addEventListener('mouseup', () => {
+    if (_dragging) { _dragging = false; preview.classList.remove('dragging'); }
+  });
+
+  // Drag (touch)
+  preview.addEventListener('touchstart', e => {
+    if (preview.classList.contains('hidden')) return;
+    _dragging = true;
+    _didDrag  = false;
+    const t = e.touches[0];
+    _dragStart = { x: t.clientX, y: t.clientY };
+    const p = _coverPos.split(' ');
+    _posStart = { x: parseFloat(p[0]), y: parseFloat(p[1]) };
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!_dragging) return;
+    const t = e.touches[0];
+    const dx = Math.abs(t.clientX - _dragStart.x);
+    const dy = Math.abs(t.clientY - _dragStart.y);
+    if (dx > 3 || dy > 3) _didDrag = true;
+    const rect = preview.getBoundingClientRect();
+    const nx = Math.max(0, Math.min(100, _posStart.x - (t.clientX - _dragStart.x) / rect.width * 100));
+    const ny = Math.max(0, Math.min(100, _posStart.y - (t.clientY - _dragStart.y) / rect.height * 100));
+    _coverPos = `${nx.toFixed(1)}% ${ny.toFixed(1)}%`;
+    preview.style.objectPosition = _coverPos;
+  });
+  document.addEventListener('touchend', () => { _dragging = false; });
+
+  // Clique abre seletor — na área inteira, mas ignora se foi um arraste
+  uploadArea.addEventListener('click', () => {
+    if (_didDrag) { _didDrag = false; return; }
+    fileInput.click();
+  });
+
   fileInput.addEventListener('change', e => {
     _coverFile = e.target.files[0];
-    if (_coverFile) {
-      preview.src = URL.createObjectURL(_coverFile);
-      preview.classList.remove('hidden');
-      placeholder.style.display = 'none';
-    }
+    if (_coverFile) _showCover(URL.createObjectURL(_coverFile), '50% 50%');
   });
 
   const deleteBtn = document.getElementById('btn-delete-movie');
@@ -713,9 +807,7 @@ let _resetAddMovieForm = null;
   _resetAddMovieForm = () => {
     _coverFile = null;
     document.getElementById('form-add-movie').reset();
-    preview.src = '';
-    preview.classList.add('hidden');
-    placeholder.style.display = '';
+    _hideCover();
     titleH2.textContent  = 'Adicionar Filme';
     submitBtn.innerHTML  = '<i class="fa-solid fa-upload"></i> Publicar Filme';
     deleteBtn.classList.add('hidden');
@@ -726,20 +818,12 @@ let _resetAddMovieForm = null;
     _coverFile = null;
     document.getElementById('movie-title').value      = movie.title       || '';
     document.getElementById('movie-desc-input').value = movie.description || '';
-    // selects carregados async — aguardar um tick
     setTimeout(() => {
       document.getElementById('movie-category').value = movie.categoryId  || '';
       document.getElementById('movie-age').value      = movie.ageRatingId || '';
     }, 100);
-    if (movie.coverUrl) {
-      preview.src = movie.coverUrl;
-      preview.classList.remove('hidden');
-      placeholder.style.display = 'none';
-    } else {
-      preview.src = '';
-      preview.classList.add('hidden');
-      placeholder.style.display = '';
-    }
+    if (movie.coverUrl) _showCover(movie.coverUrl, movie.coverPosition || '50% 50%');
+    else _hideCover();
     titleH2.textContent = 'Editar Filme';
     submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> Salvar alterações';
     deleteBtn.classList.remove('hidden');
@@ -798,10 +882,11 @@ let _resetAddMovieForm = null;
     if (!AppState.user) { showToast('Faça login primeiro'); return; }
 
     const data = {
-      title:       document.getElementById('movie-title').value,
-      description: document.getElementById('movie-desc-input').value,
-      categoryId:  document.getElementById('movie-category').value,
-      ageRatingId: document.getElementById('movie-age').value
+      title:         document.getElementById('movie-title').value,
+      description:   document.getElementById('movie-desc-input').value,
+      categoryId:    document.getElementById('movie-category').value,
+      ageRatingId:   document.getElementById('movie-age').value,
+      coverPosition: _coverPos || '50% 50%'
     };
 
     try {
@@ -837,6 +922,8 @@ function openEditMovie(movie) {
 }
 
 // ── WATCHLIST ──────────────────────────────────
+let _watchlistRenderGen = 0;
+
 function initWatchlistView() {
   const coupleId = AppState.coupleDoc?.id;
   const container = document.getElementById('watchlist-container');
@@ -849,6 +936,7 @@ function initWatchlistView() {
   AppState._watchlistUnsub = db.collection('watchlist')
     .where('coupleId', '==', coupleId)
     .onSnapshot(async snap => {
+      const gen = ++_watchlistRenderGen;
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0));
 
@@ -859,6 +947,7 @@ function initWatchlistView() {
       container.innerHTML = '';
       for (const item of items) {
         const movie = await Movies.getMovie(item.movieId);
+        if (gen !== _watchlistRenderGen) return;
         if (!movie) continue;
         container.appendChild(buildListMovieItem(movie, async () => {
           await Movies.removeFromWatchlist(coupleId, item.movieId);
@@ -869,6 +958,8 @@ function initWatchlistView() {
 }
 
 // ── FAVORITOS ──────────────────────────────────
+let _favoritesRenderGen = 0;
+
 function initFavoritesView() {
   const coupleId = AppState.coupleDoc?.id;
   const container = document.getElementById('favorites-container');
@@ -881,6 +972,7 @@ function initFavoritesView() {
   AppState._favoritesUnsub = db.collection('favorites')
     .where('coupleId', '==', coupleId)
     .onSnapshot(async snap => {
+      const gen = ++_favoritesRenderGen;
       const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0));
 
@@ -891,6 +983,7 @@ function initFavoritesView() {
       container.innerHTML = '';
       for (const item of items) {
         const movie = await Movies.getMovie(item.movieId);
+        if (gen !== _favoritesRenderGen) return;
         if (!movie) continue;
         container.appendChild(buildListMovieItem(movie, async () => {
           await Movies.addToFavorites(coupleId, item.movieId);
@@ -905,7 +998,7 @@ function buildListMovieItem(movie, onRemove) {
   el.className = 'list-movie-item';
   el.innerHTML = `
     ${movie.coverUrl
-      ? `<img class="list-movie-thumb" src="${movie.coverUrl}" alt="${movie.title}" loading="lazy" />`
+      ? `<img class="list-movie-thumb" src="${movie.coverUrl}" alt="${movie.title}" loading="lazy" style="object-position:${movie.coverPosition||'50% 50%'}" />`
       : `<div class="list-movie-thumb"></div>`}
     <div class="list-movie-info">
       <div class="list-movie-title">${movie.title}</div>
@@ -940,8 +1033,8 @@ async function initProfileView(coupleId, isOwn = true) {
 
     const a1 = document.getElementById('profile-avatar1');
     const a2 = document.getElementById('profile-avatar2');
-    a1.innerHTML = u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
-    a2.innerHTML = u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
+    a1.innerHTML = _avatarImg(u1);
+    a2.innerHTML = _avatarImg(u2);
 
     document.getElementById('profile-score-num').textContent = couple.score || 0;
     document.getElementById('stat-watched').textContent  = couple.moviesWatched || 0;
@@ -953,8 +1046,13 @@ async function initProfileView(coupleId, isOwn = true) {
     backBtn.classList.toggle('hidden', isOwn);
     backBtn.onclick = () => navigateTo(AppState.prevView || 'feed');
 
-    // Abas
+    // Abas — clonar para remover listeners antigos acumulados de visitas anteriores
     document.querySelectorAll('.profile-tab').forEach(tab => {
+      const fresh = tab.cloneNode(true);
+      tab.replaceWith(fresh);
+    });
+    document.querySelectorAll('.profile-tab').forEach((tab, i) => {
+      tab.classList.toggle('active', i === 0);
       tab.addEventListener('click', () => {
         document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
@@ -1017,7 +1115,10 @@ async function initProfileView(coupleId, isOwn = true) {
   } finally { showLoading(false); }
 }
 
+let _profileTabGen = 0;
+
 async function loadProfileTab(coupleId, tab, isOwn = true) {
+  const gen = ++_profileTabGen;
   const container = document.getElementById('profile-tab-content');
   container.innerHTML = '<p class="empty-text">Carregando...</p>';
 
@@ -1027,6 +1128,8 @@ async function loadProfileTab(coupleId, tab, isOwn = true) {
     if (tab === 'favorites') items = await Movies.getFavorites(coupleId);
     if (tab === 'watchlist') items = await Movies.getWatchlist(coupleId);
 
+    if (gen !== _profileTabGen) return;
+
     if (!items.length) {
       container.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Nenhum filme aqui ainda</p>';
       return;
@@ -1035,6 +1138,7 @@ async function loadProfileTab(coupleId, tab, isOwn = true) {
     container.innerHTML = '';
     for (const item of items) {
       const movie = await Movies.getMovie(item.movieId);
+      if (gen !== _profileTabGen) return;
       if (!movie) continue;
       const img = document.createElement('img');
       img.className = 'profile-movie-thumb';
@@ -1053,6 +1157,8 @@ async function loadProfileTab(coupleId, tab, isOwn = true) {
 }
 
 // ── DESCOBRIR ──────────────────────────────────
+let _discoverGen = 0;
+
 async function initDiscoverView() {
   const list = document.getElementById('discover-list');
   list.innerHTML = '<p class="empty-text">Carregando...</p>';
@@ -1062,8 +1168,10 @@ async function initDiscoverView() {
   searchInput.oninput = _debounce(async () => {
     const q = searchInput.value.trim();
     if (q) {
+      const gen = ++_discoverGen;
       const results = await Couple.searchCoupleByNickname(q);
-      renderCouplesList(results, list);
+      if (gen !== _discoverGen) return;
+      renderCouplesList(results, list, gen);
     } else {
       loadDiscoverCouples();
     }
@@ -1073,15 +1181,16 @@ async function initDiscoverView() {
 }
 
 async function loadDiscoverCouples() {
+  const gen = ++_discoverGen;
   const list    = document.getElementById('discover-list');
   const podium  = document.getElementById('podium-list');
   const podSect = document.getElementById('podium-section');
   const regTitle = document.getElementById('discover-regular-title');
   try {
     const couples = await Couple.listCouples(50);
+    if (gen !== _discoverGen) return;
     const myId    = AppState.coupleDoc?.id;
-    const sorted  = couples
-      .sort((a, b) => (b.score || 0) - (a.score || 0));
+    const sorted  = couples.sort((a, b) => (b.score || 0) - (a.score || 0));
 
     const top3 = sorted.slice(0, 3);
     const rest = sorted.slice(3);
@@ -1091,10 +1200,10 @@ async function loadDiscoverCouples() {
       podSect.classList.remove('hidden');
       podium.innerHTML = '';
       const medals = ['🥇', '🥈', '🥉'];
-      const positions = [1, 2, 3]; // CSS order: 2nd left, 1st center, 3rd right
       for (let i = 0; i < top3.length; i++) {
         const c = top3[i];
         const [u1, u2] = await Promise.all([Auth.fetchUserDoc(c.user1), Auth.fetchUserDoc(c.user2)]);
+        if (gen !== _discoverGen) return;
         const card = document.createElement('div');
         card.className = `podium-card podium-card-${i + 1}`;
         const isYou = c.id === myId;
@@ -1102,8 +1211,8 @@ async function loadDiscoverCouples() {
         card.innerHTML = `
           <div class="podium-medal">${medals[i]}</div>
           <div class="podium-avatars">
-            <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
-            <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
+            <div class="avatar">${_avatarImg(u1)}</div>
+            <div class="avatar">${_avatarImg(u2)}</div>
           </div>
           <div class="podium-names">${u1?.name || '?'} & ${u2?.name || '?'}${isYou ? ' <span class="badge-you">Você</span>' : ''}</div>
           <div class="podium-score">${c.score || 0} pts</div>
@@ -1117,13 +1226,13 @@ async function loadDiscoverCouples() {
 
     // Renderizar lista geral
     regTitle.style.display = rest.length ? '' : 'none';
-    renderCouplesList(rest, list);
+    renderCouplesList(rest, list, gen);
   } catch(e) {
     list.innerHTML = '<p class="empty-text">Erro ao carregar</p>';
   }
 }
 
-async function renderCouplesList(couples, container) {
+async function renderCouplesList(couples, container, gen = _discoverGen) {
   if (!couples.length) {
     container.innerHTML = '';
     return;
@@ -1134,13 +1243,14 @@ async function renderCouplesList(couples, container) {
       Auth.fetchUserDoc(c.user1),
       Auth.fetchUserDoc(c.user2)
     ]);
+    if (gen !== _discoverGen) return;
     const el = document.createElement('div');
     const isYouItem = c.id === AppState.coupleDoc?.id;
     el.className = `couple-item${isYouItem ? ' couple-item-you' : ''}`;
     el.innerHTML = `
       <div class="couple-item-avatars">
-        <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
-        <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
+        <div class="avatar">${_avatarImg(u1)}</div>
+        <div class="avatar">${_avatarImg(u2)}</div>
       </div>
       <div class="couple-item-info">
         <div class="couple-item-names">${u1?.name || '?'} & ${u2?.name || '?'}${isYouItem ? ' <span class="badge-you">Você</span>' : ''}</div>
@@ -1268,6 +1378,8 @@ function initConnectView() {
 // ── NOTIFICAÇÕES ──────────────────────────────
 function initNotifView() {
   const list = document.getElementById('notifications-list');
+  // Marcar todas como lidas ao abrir
+  if (AppState.user?.uid) Feed.markAllNotifsRead(AppState.user.uid).catch(() => {});
   const notifs = AppState.notifications || [];
 
   if (!notifs.length) {
@@ -1319,23 +1431,91 @@ function initSettingsView() {
   document.getElementById('settings-nickname').value = `@${doc.nickname || ''}`;
 
   const avatarEl = document.getElementById('settings-avatar');
-  avatarEl.innerHTML = doc.avatarUrl ? `<img src="${doc.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>';
+  let _avatarPos  = doc.avatarPosition || '50% 50%';
+  let _avatarFile = null;
+
+  // Remover listeners de drag de visita anterior
+  if (avatarEl._dragCleanup) { avatarEl._dragCleanup(); avatarEl._dragCleanup = null; }
+
+  function _applyAvatar(url, pos) {
+    _avatarPos = pos || '50% 50%';
+    avatarEl.innerHTML = `<img src="${url}" alt="" style="object-fit:cover;width:100%;height:100%;object-position:${_avatarPos};cursor:grab" />`;
+    const hint = document.getElementById('avatar-reposition-hint');
+    if (hint) hint.classList.remove('hidden');
+    _setupAvatarDrag(avatarEl.querySelector('img'));
+  }
+
+  function _setupAvatarDrag(img) {
+    if (!img) return;
+    let _drag = false;
+    let _dragStart = { x: 0, y: 0 };
+    let _posStart  = { x: 50, y: 50 };
+
+    function _onMouseMove(e) {
+      if (!_drag) return;
+      const rect = avatarEl.getBoundingClientRect();
+      const nx = Math.max(0, Math.min(100, _posStart.x - (e.clientX - _dragStart.x) / rect.width  * 100));
+      const ny = Math.max(0, Math.min(100, _posStart.y - (e.clientY - _dragStart.y) / rect.height * 100));
+      _avatarPos = `${nx.toFixed(1)}% ${ny.toFixed(1)}%`;
+      img.style.objectPosition = _avatarPos;
+    }
+    function _onMouseUp() { if (_drag) { _drag = false; img.style.cursor = 'grab'; } }
+    function _onTouchMove(e) {
+      if (!_drag) return;
+      const t = e.touches[0];
+      const rect = avatarEl.getBoundingClientRect();
+      const nx = Math.max(0, Math.min(100, _posStart.x - (t.clientX - _dragStart.x) / rect.width  * 100));
+      const ny = Math.max(0, Math.min(100, _posStart.y - (t.clientY - _dragStart.y) / rect.height * 100));
+      _avatarPos = `${nx.toFixed(1)}% ${ny.toFixed(1)}%`;
+      img.style.objectPosition = _avatarPos;
+    }
+    function _onTouchEnd() { _drag = false; }
+
+    img.addEventListener('mousedown', e => {
+      e.preventDefault();
+      _drag = true;
+      _dragStart = { x: e.clientX, y: e.clientY };
+      const p = _avatarPos.split(' ');
+      _posStart = { x: parseFloat(p[0]), y: parseFloat(p[1]) };
+      img.style.cursor = 'grabbing';
+    });
+    document.addEventListener('mousemove', _onMouseMove);
+    document.addEventListener('mouseup',   _onMouseUp);
+    img.addEventListener('touchstart', e => {
+      _drag = true;
+      const t = e.touches[0];
+      _dragStart = { x: t.clientX, y: t.clientY };
+      const p = _avatarPos.split(' ');
+      _posStart = { x: parseFloat(p[0]), y: parseFloat(p[1]) };
+    }, { passive: true });
+    document.addEventListener('touchmove', _onTouchMove);
+    document.addEventListener('touchend',  _onTouchEnd);
+
+    avatarEl._dragCleanup = () => {
+      document.removeEventListener('mousemove', _onMouseMove);
+      document.removeEventListener('mouseup',   _onMouseUp);
+      document.removeEventListener('touchmove', _onTouchMove);
+      document.removeEventListener('touchend',  _onTouchEnd);
+    };
+  }
+
+  if (doc.avatarUrl) {
+    _applyAvatar(doc.avatarUrl, _avatarPos);
+  } else {
+    avatarEl.innerHTML = '<i class="fa-solid fa-user"></i>';
+    const hint = document.getElementById('avatar-reposition-hint');
+    if (hint) hint.classList.add('hidden');
+  }
 
   document.getElementById('btn-change-avatar').onclick = () => {
     document.getElementById('avatar-file').click();
   };
 
-  document.getElementById('avatar-file').onchange = async e => {
+  document.getElementById('avatar-file').onchange = e => {
     const file = e.target.files[0];
     if (!file) return;
-    showLoading(true);
-    try {
-      const url = await Auth.uploadAvatar(user.uid, file);
-      avatarEl.innerHTML = `<img src="${url}" alt="">`;
-      AppState.userDoc = await Auth.fetchUserDoc(user.uid);
-      showToast('Foto atualizada!');
-    } catch(e) { showToast(e.message); }
-    finally { showLoading(false); }
+    _avatarFile = file;
+    _applyAvatar(URL.createObjectURL(file), '50% 50%');
   };
 
   document.getElementById('btn-save-settings').onclick = async () => {
@@ -1343,7 +1523,11 @@ function initSettingsView() {
     if (!name) { showToast('Digite seu nome'); return; }
     showLoading(true);
     try {
-      await Auth.updateProfile(user.uid, { name });
+      if (_avatarFile) {
+        await Auth.uploadAvatar(user.uid, _avatarFile);
+        _avatarFile = null;
+      }
+      await Auth.updateProfile(user.uid, { name, avatarPosition: _avatarPos });
       AppState.userDoc = await Auth.fetchUserDoc(user.uid);
       showToast('Perfil atualizado!');
     } catch(e) { showToast(e.message); }
@@ -1416,6 +1600,11 @@ function translateAuthError(code) {
 function _debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function _avatarImg(userDoc) {
+  if (!userDoc?.avatarUrl) return '<i class="fa-solid fa-user"></i>';
+  return `<img src="${userDoc.avatarUrl}" alt="" style="object-position:${userDoc.avatarPosition||'50% 50%'}">`;
 }
 
 // Expor para o feed
