@@ -1040,12 +1040,50 @@ async function initDiscoverView() {
 }
 
 async function loadDiscoverCouples() {
-  const list = document.getElementById('discover-list');
+  const list    = document.getElementById('discover-list');
+  const podium  = document.getElementById('podium-list');
+  const podSect = document.getElementById('podium-section');
+  const regTitle = document.getElementById('discover-regular-title');
   try {
-    const couples = await Couple.listCouples(20);
-    const myId = AppState.coupleDoc?.id;
-    const filtered = couples.filter(c => c.id !== myId);
-    renderCouplesList(filtered, list);
+    const couples = await Couple.listCouples(50);
+    const myId    = AppState.coupleDoc?.id;
+    const sorted  = couples
+      .filter(c => c.id !== myId)
+      .sort((a, b) => (b.score || 0) - (a.score || 0));
+
+    const top3 = sorted.slice(0, 3);
+    const rest = sorted.slice(3);
+
+    // Renderizar pódio
+    if (top3.length >= 1) {
+      podSect.classList.remove('hidden');
+      podium.innerHTML = '';
+      const medals = ['🥇', '🥈', '🥉'];
+      const positions = [1, 2, 3]; // CSS order: 2nd left, 1st center, 3rd right
+      for (let i = 0; i < top3.length; i++) {
+        const c = top3[i];
+        const [u1, u2] = await Promise.all([Auth.fetchUserDoc(c.user1), Auth.fetchUserDoc(c.user2)]);
+        const card = document.createElement('div');
+        card.className = `podium-card podium-card-${i + 1}`;
+        card.innerHTML = `
+          <div class="podium-medal">${medals[i]}</div>
+          <div class="podium-avatars">
+            <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
+            <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
+          </div>
+          <div class="podium-names">${u1?.name || '?'} & ${u2?.name || '?'}</div>
+          <div class="podium-score">${c.score || 0} pts</div>
+        `;
+        card.addEventListener('click', () => navigateTo('profile', { coupleId: c.id, isOwn: c.id === myId }));
+        podium.appendChild(card);
+      }
+    } else {
+      podSect.classList.add('hidden');
+    }
+
+    // Renderizar lista geral
+    regTitle.style.display = rest.length ? '' : 'none';
+    renderCouplesList(rest, list);
   } catch(e) {
     list.innerHTML = '<p class="empty-text">Erro ao carregar</p>';
   }
@@ -1053,7 +1091,7 @@ async function loadDiscoverCouples() {
 
 async function renderCouplesList(couples, container) {
   if (!couples.length) {
-    container.innerHTML = '<p class="empty-text">Nenhum casal encontrado</p>';
+    container.innerHTML = '';
     return;
   }
   container.innerHTML = '';
