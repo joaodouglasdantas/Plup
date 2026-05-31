@@ -892,6 +892,20 @@ textarea { resize: vertical; }
   color: var(--danger); transition: var(--transition);
 }
 .admin-item-delete:hover { background: #FFF0F0; }
+.admin-item-edit {
+  font-size: 0.9rem; padding: 6px 8px; border-radius: 8px;
+  color: var(--blue); transition: var(--transition);
+}
+.admin-item-edit:hover { background: #E8F4FF; }
+.admin-edit-input {
+  flex: 1; border: 1.5px solid var(--cyan); border-radius: 8px;
+  padding: 5px 10px; font-size: 0.85rem; font-weight: 700; color: var(--navy);
+  outline: none;
+}
+.admin-edit-color {
+  width: 36px; height: 36px; border: none; border-radius: 8px;
+  cursor: pointer; padding: 2px;
+}
 .score-config-form { display: flex; flex-direction: column; gap: 10px; }
 .config-row {
   display: flex; align-items: center; justify-content: space-between;

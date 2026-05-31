@@ -40,9 +40,10 @@ const Admin = (() => {
       list.innerHTML = cats.map(c => {
         const badge = `<span class="badge-age" style="background:${c.color || 'var(--cyan-l)'};color:${c.color ? '#fff' : 'var(--navy)'}">${c.name}</span>`;
         return `
-          <div class="admin-item">
+          <div class="admin-item" id="cat-item-${c.id}">
             ${badge}
             <span class="admin-item-name">${c.name}</span>
+            <button class="admin-item-edit" onclick="Admin.editCategory('${c.id}','${c.name.replace(/'/g,"\\'")}','${c.color || ''}')">✏️</button>
             <button class="admin-item-delete" data-id="${c.id}" onclick="Admin.deleteCategory('${c.id}')">🗑️</button>
           </div>
         `;
@@ -74,9 +75,10 @@ const Admin = (() => {
       const list = document.getElementById('ages-list');
       if (!ages.length) { list.innerHTML = '<p class="empty-text">Nenhuma classificação cadastrada</p>'; return; }
       list.innerHTML = ages.map(a => `
-        <div class="admin-item">
+        <div class="admin-item" id="age-item-${a.id}">
           <span class="badge-age" style="background:${a.color || '#FFB703'};color:#fff">${a.label}</span>
           <span class="admin-item-name">${a.label}</span>
+          <button class="admin-item-edit" onclick="Admin.editAgeRating('${a.id}','${a.label.replace(/'/g,"\\'")}','${a.color || ''}')">✏️</button>
           <button class="admin-item-delete" onclick="Admin.deleteAgeRating('${a.id}')">🗑️</button>
         </div>
       `).join('');
@@ -98,6 +100,49 @@ const Admin = (() => {
     if (!confirm('Deletar esta classificação?')) return;
     await Movies.deleteAgeRating(id);
     showToast('Classificação removida');
+  }
+
+  function editCategory(id, name, color) {
+    const item = document.getElementById(`cat-item-${id}`);
+    item.innerHTML = `
+      <input class="admin-edit-input" id="edit-cat-name-${id}" value="${name}" placeholder="Nome" />
+      <input type="color" class="admin-edit-color" id="edit-cat-color-${id}" value="${color || '#0077B6'}" />
+      <button class="btn btn-primary btn-sm" onclick="Admin.saveCategory('${id}')">Salvar</button>
+      <button class="btn btn-ghost btn-sm" onclick="Admin.cancelEdit('cat-item-${id}')">✕</button>
+    `;
+  }
+
+  async function saveCategory(id) {
+    const name = document.getElementById(`edit-cat-name-${id}`).value.trim();
+    const color = document.getElementById(`edit-cat-color-${id}`).value;
+    if (!name) { showToast('Digite o nome'); return; }
+    await Movies.updateCategory(id, name, color);
+    showToast('Categoria atualizada ✅');
+  }
+
+  function editAgeRating(id, label, color) {
+    const item = document.getElementById(`age-item-${id}`);
+    item.innerHTML = `
+      <input class="admin-edit-input" id="edit-age-label-${id}" value="${label}" placeholder="Rótulo" />
+      <input type="color" class="admin-edit-color" id="edit-age-color-${id}" value="${color || '#FFB703'}" />
+      <button class="btn btn-primary btn-sm" onclick="Admin.saveAgeRating('${id}')">Salvar</button>
+      <button class="btn btn-ghost btn-sm" onclick="Admin.cancelEdit('age-item-${id}')">✕</button>
+    `;
+  }
+
+  async function saveAgeRating(id) {
+    const label = document.getElementById(`edit-age-label-${id}`).value.trim();
+    const color = document.getElementById(`edit-age-color-${id}`).value;
+    if (!label) { showToast('Digite o rótulo'); return; }
+    await Movies.updateAgeRating(id, label, color);
+    showToast('Classificação atualizada ✅');
+  }
+
+  function cancelEdit(itemId) {
+    // o listener do Firestore já vai re-renderizar o item automaticamente
+    // mas forçamos um no-op para fechar o form imediatamente
+    const item = document.getElementById(itemId);
+    if (item) item.innerHTML = '<span style="color:var(--gray-5);font-size:.8rem">Atualizando...</span>';
   }
 
   // ── Denúncias ─────────────────────────────
@@ -205,7 +250,10 @@ const Admin = (() => {
   }
 
   return {
-    initAdmin, deleteCategory, deleteAgeRating,
+    initAdmin,
+    deleteCategory, editCategory, saveCategory,
+    deleteAgeRating, editAgeRating, saveAgeRating,
+    cancelEdit,
     resolveReport, toggleMovie, removeMovie
   };
 })();

@@ -57,6 +57,10 @@ const Movies = (() => {
     await db.collection('categories').doc(id).delete();
   }
 
+  async function updateCategory(id, name, color) {
+    await db.collection('categories').doc(id).update({ name, color });
+  }
+
   // ── Classificações etárias ─────────────────
   function onAgeRatings(callback) {
     return db.collection('ageRatings').orderBy('order').onSnapshot(snap => {
@@ -76,6 +80,10 @@ const Movies = (() => {
 
   async function deleteAgeRating(id) {
     await db.collection('ageRatings').doc(id).delete();
+  }
+
+  async function updateAgeRating(id, label, color) {
+    await db.collection('ageRatings').doc(id).update({ label, color });
   }
 
   // ── Adicionar filme ───────────────────────
@@ -389,8 +397,8 @@ const Movies = (() => {
   }
 
   return {
-    onCategories, addCategory, deleteCategory,
-    onAgeRatings, addAgeRating, deleteAgeRating,
+    onCategories, addCategory, deleteCategory, updateCategory,
+    onAgeRatings, addAgeRating, deleteAgeRating, updateAgeRating,
     addMovie, updateMovie, onMovies, searchMovies, getMovie,
     rateMovie, getRating, getPartnerRating,
     markWatched, removeFromWatched, isWatched, getWatched,
