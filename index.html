@@ -263,7 +263,7 @@
           <div class="feed-section-title">O que estão assistindo</div>
           <div id="feed-list" class="feed-list">
             <div class="feed-empty">
-              <img src="refs/personagem2.png" alt="" class="empty-mascot" />
+              <img src="refs/personagem.png" alt="" class="empty-mascot" />
               <p>Siga outros casais para ver o que estão assistindo!</p>
               <button class="btn btn-primary" data-nav="discover">
                 <i class="fa-solid fa-compass"></i> Descobrir casais
@@ -410,6 +410,9 @@
       <!-- ── PERFIL DO CASAL ────────────────── -->
       <div id="view-profile" class="view">
         <div class="profile-hero">
+          <button class="btn-back-overlay hidden" id="profile-back-btn">
+            <i class="fa-solid fa-arrow-left"></i>
+          </button>
           <div class="profile-avatars">
             <div class="avatar avatar-lg" id="profile-avatar1"><i class="fa-solid fa-user"></i></div>
             <div class="couple-heart-lg"><i class="fa-solid fa-heart"></i></div>
@@ -546,6 +549,7 @@
             <div class="input-row">
               <input type="text" id="new-category-name" placeholder="Nome da categoria" />
               <input type="text" id="new-category-icon" placeholder="Ícone (ex: fa-film)" />
+              <input type="color" id="new-category-color" value="#0077B6" title="Cor da categoria" />
               <button class="btn btn-primary btn-sm" id="btn-add-category">
                 <i class="fa-solid fa-plus"></i> Adicionar
               </button>

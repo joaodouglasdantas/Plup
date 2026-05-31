@@ -12,9 +12,10 @@ const Movies = (() => {
     });
   }
 
-  async function addCategory(name, icon) {
+  async function addCategory(name, icon, color) {
     await db.collection('categories').add({
       name, icon: icon || '🎬',
+      color: color || '',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   }
@@ -171,9 +172,9 @@ const Movies = (() => {
   }
 
   async function getWatched(coupleId) {
-    const snap = await db.collection('watched').where('coupleId', '==', coupleId)
-      .orderBy('watchedAt', 'desc').get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await db.collection('watched').where('coupleId', '==', coupleId).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.watchedAt?.seconds || 0) - (a.watchedAt?.seconds || 0));
   }
 
   // ── Watchlist ─────────────────────────────
@@ -198,9 +199,9 @@ const Movies = (() => {
   }
 
   async function getWatchlist(coupleId) {
-    const snap = await db.collection('watchlist').where('coupleId', '==', coupleId)
-      .orderBy('addedAt', 'desc').get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await db.collection('watchlist').where('coupleId', '==', coupleId).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0));
   }
 
   // ── Favoritos ─────────────────────────────
@@ -228,9 +229,9 @@ const Movies = (() => {
   }
 
   async function getFavorites(coupleId) {
-    const snap = await db.collection('favorites').where('coupleId', '==', coupleId)
-      .orderBy('addedAt', 'desc').get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await db.collection('favorites').where('coupleId', '==', coupleId).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.addedAt?.seconds || 0) - (a.addedAt?.seconds || 0));
   }
 
   // ── Denunciar filme ───────────────────────

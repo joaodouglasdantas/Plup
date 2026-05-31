@@ -37,21 +37,27 @@ const Admin = (() => {
     Movies.onCategories(cats => {
       const list = document.getElementById('categories-list');
       if (!cats.length) { list.innerHTML = '<p class="empty-text">Nenhuma categoria cadastrada</p>'; return; }
-      list.innerHTML = cats.map(c => `
-        <div class="admin-item">
-          <span>${c.icon || '🎬'}</span>
-          <span class="admin-item-name">${c.name}</span>
-          <button class="admin-item-delete" data-id="${c.id}" onclick="Admin.deleteCategory('${c.id}')">🗑️</button>
-        </div>
-      `).join('');
+      list.innerHTML = cats.map(c => {
+        const iconHtml = c.icon?.startsWith('fa-') ? `<i class="fa-solid ${c.icon}"></i>` : (c.icon || '🎬');
+        const colorDot = c.color ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${c.color};flex-shrink:0;"></span>` : '';
+        return `
+          <div class="admin-item">
+            ${colorDot}
+            <span>${iconHtml}</span>
+            <span class="admin-item-name">${c.name}</span>
+            <button class="admin-item-delete" data-id="${c.id}" onclick="Admin.deleteCategory('${c.id}')">🗑️</button>
+          </div>
+        `;
+      }).join('');
     });
 
     document.getElementById('btn-add-category').onclick = async () => {
       const name = document.getElementById('new-category-name').value.trim();
       const icon = document.getElementById('new-category-icon').value.trim();
+      const color = document.getElementById('new-category-color').value;
       if (!name) { showToast('Digite o nome da categoria'); return; }
       try {
-        await Movies.addCategory(name, icon || '🎬');
+        await Movies.addCategory(name, icon || '🎬', color);
         document.getElementById('new-category-name').value = '';
         document.getElementById('new-category-icon').value = '';
         showToast('Categoria adicionada! ✅');

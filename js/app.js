@@ -343,13 +343,20 @@ function initMoviesView() {
   };
 }
 
+function _renderIcon(icon) {
+  if (!icon) return '';
+  if (icon.startsWith('fa-')) return `<i class="fa-solid ${icon}"></i>`;
+  return icon;
+}
+
 function renderCategoryChips() {
   const container = document.getElementById('category-chips');
   const cats = AppState.categories;
   const allChip = `<button class="chip ${_currentCat === 'all' ? 'active' : ''}" data-cat="all">Todos</button>`;
-  const catChips = cats.map(c =>
-    `<button class="chip ${_currentCat === c.id ? 'active' : ''}" data-cat="${c.id}">${c.icon || ''} ${c.name}</button>`
-  ).join('');
+  const catChips = cats.map(c => {
+    const dot = c.color ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${c.color};flex-shrink:0;"></span>` : '';
+    return `<button class="chip ${_currentCat === c.id ? 'active' : ''}" data-cat="${c.id}">${dot}${_renderIcon(c.icon)} ${c.name}</button>`;
+  }).join('');
   container.innerHTML = allChip + catChips;
 
   container.querySelectorAll('.chip').forEach(chip => {
@@ -386,7 +393,7 @@ function renderMoviesGrid(movies) {
           : `<div class="movie-card-cover"></div>`}
         <div class="movie-card-info">
           <div class="movie-card-title">${m.title}</div>
-          <div class="movie-card-cat">${cat ? `${cat.icon} ${cat.name}` : ''}</div>
+          <div class="movie-card-cat">${cat ? `${cat.color ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${cat.color};vertical-align:middle;margin-right:2px;"></span>` : ''}${_renderIcon(cat.icon)} ${cat.name}` : ''}</div>
         </div>
       </div>
     `;
@@ -412,7 +419,10 @@ async function openMovieDetail(movieId) {
 
     const cat = AppState.categories.find(c => c.id === movie.categoryId);
     const age = AppState.ageRatings.find(a => a.id === movie.ageRatingId);
-    document.getElementById('movie-detail-cat').textContent = cat ? `${cat.icon} ${cat.name}` : '';
+    const catEl = document.getElementById('movie-detail-cat');
+    catEl.innerHTML = cat ? `${_renderIcon(cat.icon)} ${cat.name}` : '—';
+    if (cat?.color) { catEl.style.background = cat.color; catEl.style.color = '#fff'; }
+    else { catEl.style.background = ''; catEl.style.color = ''; }
     document.getElementById('movie-detail-age').textContent = age?.label || '';
 
     const coupleId = AppState.coupleDoc?.id;
@@ -651,7 +661,7 @@ function buildListMovieItem(movie, onRemove) {
       : `<div class="list-movie-thumb"></div>`}
     <div class="list-movie-info">
       <div class="list-movie-title">${movie.title}</div>
-      <div class="list-movie-cat">${cat ? `${cat.icon} ${cat.name}` : ''}</div>
+      <div class="list-movie-cat">${cat ? `${cat.color ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${cat.color};vertical-align:middle;margin-right:2px;"></span>` : ''}${_renderIcon(cat.icon)} ${cat.name}` : ''}</div>
     </div>
     <button class="list-movie-remove">🗑️</button>
   `;
@@ -690,15 +700,20 @@ async function initProfileView(coupleId, isOwn = true) {
     document.getElementById('stat-favorites').textContent = couple.favoritesCount || 0;
     document.getElementById('stat-followers').textContent = couple.followersCount || 0;
 
+    // Botão voltar (apenas quando perfil alheio)
+    const backBtn = document.getElementById('profile-back-btn');
+    backBtn.classList.toggle('hidden', isOwn);
+    backBtn.onclick = () => navigateTo(AppState.prevView || 'feed');
+
     // Abas
     document.querySelectorAll('.profile-tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        loadProfileTab(coupleId, tab.dataset.ptab);
+        loadProfileTab(coupleId, tab.dataset.ptab, isOwn);
       });
     });
-    loadProfileTab(coupleId, 'watched');
+    loadProfileTab(coupleId, 'watched', isOwn);
 
     // Ações
     const ownActions   = document.getElementById('profile-own-actions');
@@ -754,33 +769,38 @@ async function initProfileView(coupleId, isOwn = true) {
   } finally { showLoading(false); }
 }
 
-async function loadProfileTab(coupleId, tab) {
+async function loadProfileTab(coupleId, tab, isOwn = true) {
   const container = document.getElementById('profile-tab-content');
   container.innerHTML = '<p class="empty-text">Carregando...</p>';
 
-  let items = [];
-  if (tab === 'watched')   items = await Movies.getWatched(coupleId);
-  if (tab === 'favorites') items = await Movies.getFavorites(coupleId);
-  if (tab === 'watchlist') items = await Movies.getWatchlist(coupleId);
+  try {
+    let items = [];
+    if (tab === 'watched')   items = await Movies.getWatched(coupleId);
+    if (tab === 'favorites') items = await Movies.getFavorites(coupleId);
+    if (tab === 'watchlist') items = await Movies.getWatchlist(coupleId);
 
-  if (!items.length) {
-    container.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Nenhum filme aqui ainda</p>';
-    return;
-  }
+    if (!items.length) {
+      container.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Nenhum filme aqui ainda</p>';
+      return;
+    }
 
-  container.innerHTML = '';
-  for (const item of items) {
-    const movie = await Movies.getMovie(item.movieId);
-    if (!movie) continue;
-    const img = document.createElement('img');
-    img.className = 'profile-movie-thumb';
-    img.src = movie.coverUrl || '';
-    img.alt = movie.title;
-    img.style.background = 'linear-gradient(135deg,var(--navy),var(--blue))';
-    if (!movie.coverUrl) img.style.display = 'none';
-    img.loading = 'lazy';
-    img.addEventListener('click', () => openMovieDetail(movie.id));
-    container.appendChild(img);
+    container.innerHTML = '';
+    for (const item of items) {
+      const movie = await Movies.getMovie(item.movieId);
+      if (!movie) continue;
+      const img = document.createElement('img');
+      img.className = 'profile-movie-thumb';
+      img.src = movie.coverUrl || '';
+      img.alt = movie.title;
+      img.style.background = 'linear-gradient(135deg,var(--navy),var(--blue))';
+      if (!movie.coverUrl) img.style.display = 'none';
+      img.loading = 'lazy';
+      img.addEventListener('click', () => openMovieDetail(movie.id, !isOwn));
+      container.appendChild(img);
+    }
+  } catch(e) {
+    console.error('loadProfileTab:', e);
+    container.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Erro ao carregar. Verifique os índices do Firestore no console.</p>';
   }
 }
 
