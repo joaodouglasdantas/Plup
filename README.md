@@ -1,8 +1,6 @@
-# Plup
+![Pato Plup](refs/personagem.png)
 
 ![Plup Logo](refs/logo.png)
-
-![Pato Plup](refs/personagem.png)
 
 O app para casais acompanharem os filmes que assistiram juntos.
 
