@@ -5,6 +5,40 @@
 
 const Movies = (() => {
 
+  // ── Helpers de notificação ────────────────
+  async function _notifyPartner(coupleId, uid, data) {
+    try {
+      const couple = await Couple.getCoupleDoc(coupleId);
+      if (!couple) return;
+      const partnerUid = couple.user1 === uid ? couple.user2 : couple.user1;
+      await db.collection('notifications').add({
+        userId: partnerUid, read: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        ...data
+      });
+    } catch(e) { /* não crítico */ }
+  }
+
+  async function _notifyFollowers(coupleId, data) {
+    try {
+      const snap = await db.collection('follows').where('following', '==', coupleId).get();
+      if (snap.empty) return;
+      const batch = db.batch();
+      for (const doc of snap.docs) {
+        const fc = await Couple.getCoupleDoc(doc.data().follower);
+        if (!fc) continue;
+        for (const userId of [fc.user1, fc.user2]) {
+          batch.set(db.collection('notifications').doc(), {
+            userId, read: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            ...data
+          });
+        }
+      }
+      await batch.commit();
+    } catch(e) { /* não crítico */ }
+  }
+
   // ── Categorias ────────────────────────────
   function onCategories(callback) {
     return db.collection('categories').orderBy('name').onSnapshot(snap => {
@@ -70,12 +104,17 @@ const Movies = (() => {
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Feed event
+    // Feed event + notificar seguidores
     if (userDoc.coupleId) {
       await _addFeedEvent(userDoc.coupleId, 'movie_added', {
         movieId: docRef.id,
         movieTitle: data.title.trim(),
         coverUrl
+      });
+      await _notifyFollowers(userDoc.coupleId, {
+        type: 'new_movie',
+        message: `${userDoc.name} adicionou o filme "${data.title.trim()}" 🎬`,
+        movieId: docRef.id
       });
     }
 
@@ -148,6 +187,12 @@ const Movies = (() => {
       await _addFeedEvent(coupleId, 'rated', {
         movieId, movieTitle: movieDoc?.title || '', coverUrl: movieDoc?.coverUrl || '', stars
       });
+      const name = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
+      await _notifyPartner(coupleId, uid, {
+        type: 'partner_rated',
+        message: `${name} avaliou "${movieDoc?.title || 'um filme'}" com ${stars}★`,
+        movieId
+      });
     }
   }
 
@@ -177,12 +222,19 @@ const Movies = (() => {
     await removeFromWatchlist(coupleId, movieId);
     await Couple.recalcScore(coupleId);
 
-    // Feed event
+    // Feed event + notificação ao parceiro
     const movieDoc = await getMovie(movieId);
     await _addFeedEvent(coupleId, 'watched', {
       movieId,
       movieTitle: movieDoc?.title || '',
       coverUrl: movieDoc?.coverUrl || ''
+    });
+    const uid2 = Auth.getCurrentUser().uid;
+    const name2 = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
+    await _notifyPartner(coupleId, uid2, {
+      type: 'partner_watched',
+      message: `${name2} marcou "${movieDoc?.title || 'um filme'}" como assistido 🎬`,
+      movieId
     });
   }
 
@@ -245,6 +297,14 @@ const Movies = (() => {
     });
     await Couple.recalcScore(coupleId);
     showToast('Adicionado aos favoritos ⭐');
+    const uidFav = Auth.getCurrentUser().uid;
+    const nameFav = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
+    const movieFav = await getMovie(movieId);
+    await _notifyPartner(coupleId, uidFav, {
+      type: 'partner_favorited',
+      message: `${nameFav} adicionou "${movieFav?.title || 'um filme'}" aos favoritos ⭐`,
+      movieId
+    });
     return true;
   }
 

@@ -451,7 +451,10 @@ async function openMovieDetail(movieId, readOnly = false) {
     catEl.innerHTML = cat ? cat.name : '—';
     if (cat?.color) { catEl.style.background = cat.color; catEl.style.color = '#fff'; }
     else { catEl.style.background = ''; catEl.style.color = ''; }
-    document.getElementById('movie-detail-age').textContent = age?.label || '';
+    const ageEl = document.getElementById('movie-detail-age');
+    ageEl.textContent = age?.label || '';
+    ageEl.style.background = age?.color || '';
+    ageEl.style.display = age?.label ? '' : 'none';
 
     const coupleId  = AppState.coupleDoc?.id;
     const myUid     = AppState.user?.uid;
@@ -1212,9 +1215,13 @@ function initNotifView() {
 
 function _notifIcon(type) {
   const icons = {
-    invite_accepted: '<i class="fa-solid fa-heart"></i>',
-    new_follower:    '<i class="fa-solid fa-users"></i>',
-    default:         '<i class="fa-solid fa-bell"></i>'
+    invite_accepted:  '<i class="fa-solid fa-heart"></i>',
+    new_follower:     '<i class="fa-solid fa-users"></i>',
+    partner_watched:  '<i class="fa-solid fa-eye"></i>',
+    partner_rated:    '<i class="fa-solid fa-star"></i>',
+    partner_favorited:'<i class="fa-solid fa-bookmark"></i>',
+    new_movie:        '<i class="fa-solid fa-film"></i>',
+    default:          '<i class="fa-solid fa-bell"></i>'
   };
   return icons[type] || icons.default;
 }

@@ -168,10 +168,10 @@ const Feed = (() => {
   function onNotifications(uid, callback) {
     return db.collection('notifications')
       .where('userId', '==', uid)
-      .orderBy('createdAt', 'desc')
-      .limit(30)
       .onSnapshot(snap => {
-        const notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+          .slice(0, 30);
         callback(notifs);
       });
   }
