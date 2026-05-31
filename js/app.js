@@ -1029,7 +1029,23 @@ function buildListMovieItem(movie, onRemove) {
 }
 
 // ── PERFIL ─────────────────────────────────────
+function _resetProfileView(isOwn) {
+  document.getElementById('profile-couple-names').textContent = '—';
+  document.getElementById('profile-couple-since').textContent = 'Casal desde —';
+  document.getElementById('profile-score-num').textContent = '0';
+  document.getElementById('stat-watched').textContent = '0';
+  document.getElementById('stat-favorites').textContent = '0';
+  document.getElementById('stat-followers').textContent = '0';
+  document.getElementById('profile-tab-content').innerHTML = '';
+  document.getElementById('profile-avatar1').innerHTML = '<i class="fa-solid fa-user"></i>';
+  document.getElementById('profile-avatar2').innerHTML = '<i class="fa-solid fa-user"></i>';
+  document.getElementById('profile-back-btn').classList.toggle('hidden', isOwn);
+  document.getElementById('profile-own-actions').classList.toggle('hidden', !isOwn);
+  document.getElementById('profile-other-actions').classList.toggle('hidden', isOwn);
+}
+
 async function initProfileView(coupleId, isOwn = true) {
+  _resetProfileView(isOwn);
   if (!coupleId) return;
   showLoading(true);
   try {
@@ -1078,18 +1094,8 @@ async function initProfileView(coupleId, isOwn = true) {
     });
     loadProfileTab(coupleId, 'watched', isOwn);
 
-    // Ações
-    const ownActions   = document.getElementById('profile-own-actions');
-    const otherActions = document.getElementById('profile-other-actions');
-
-    if (isOwn) {
-      ownActions.classList.remove('hidden');
-      otherActions.classList.add('hidden');
-
-    } else {
-      ownActions.classList.add('hidden');
-      otherActions.classList.remove('hidden');
-
+    // Ações (own-actions/other-actions já foram alternados pelo _resetProfileView)
+    if (!isOwn) {
       const myCouple = AppState.coupleDoc?.id;
       const following = myCouple ? await Couple.isFollowing(myCouple, coupleId) : false;
       const followBtn = document.getElementById('btn-follow-couple');
