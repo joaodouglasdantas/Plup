@@ -251,6 +251,23 @@ function setupGlobalEventListeners() {
   document.getElementById('movie-back').addEventListener('click', () => {
     navigateTo(AppState.prevView || 'movies');
   });
+
+  // ── LOGOUT & DESCONECTAR (independentes do estado do perfil) ─
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await Auth.logout();
+    navigateTo('auth');
+  });
+
+  document.getElementById('btn-disconnect-partner').addEventListener('click', () => {
+    const coupleDoc = AppState.coupleDoc;
+    if (!coupleDoc) { showToast('Nenhum casal vinculado'); return; }
+    showModal('Desconectar parceiro', '<p>Tem certeza? Você perderá o perfil compartilhado.</p>', async () => {
+      await Couple.disconnect(coupleDoc.id, coupleDoc.user1, coupleDoc.user2);
+      AppState.coupleDoc = null;
+      closeModal();
+      navigateTo('connect');
+    });
+  });
 }
 
 // ════════════════════════════════════════════════
@@ -1069,18 +1086,6 @@ async function initProfileView(coupleId, isOwn = true) {
       ownActions.classList.remove('hidden');
       otherActions.classList.add('hidden');
 
-      document.getElementById('btn-disconnect-partner').onclick = () => {
-        showModal('Desconectar parceiro', '<p>Tem certeza? Você perderá o perfil compartilhado.</p>', async () => {
-          await Couple.disconnect(coupleId, couple.user1, couple.user2);
-          AppState.coupleDoc = null;
-          closeModal();
-          navigateTo('connect');
-        });
-      };
-      document.getElementById('btn-logout').onclick = async () => {
-        await Auth.logout();
-        navigateTo('auth');
-      };
     } else {
       ownActions.classList.add('hidden');
       otherActions.classList.remove('hidden');

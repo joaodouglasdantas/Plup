@@ -356,7 +356,7 @@ textarea { resize: vertical; }
   box-shadow: 0 2px 8px rgba(3,4,94,0.06);
 }
 .top-bar h2 { font-size: 1.05rem; font-weight: 800; color: var(--navy); }
-.header-logo { height: 34px; }
+.header-logo { height: 80px; }
 .top-bar-actions { display: flex; gap: 8px; }
 
 /* ════════════════════════════════════════════════
