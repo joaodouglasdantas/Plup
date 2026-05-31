@@ -247,10 +247,7 @@ function setupGlobalEventListeners() {
     if (e.target === document.getElementById('modal-overlay')) closeModal();
   });
 
-  // ── ADD MOVIE BACK ────────────────────────
-  document.getElementById('add-movie-back').addEventListener('click', () => {
-    navigateTo(AppState.prevView || 'movies');
-  });
+  // add-movie-back é gerenciado dentro de setupAddMovie (suporta modo edição)
   document.getElementById('movie-back').addEventListener('click', () => {
     navigateTo(AppState.prevView || 'movies');
   });
@@ -753,7 +750,7 @@ let _resetAddMovieForm = null;
     const sel = document.getElementById('movie-category');
     const cur = sel.value;
     sel.innerHTML = '<option value="">Selecionar categoria</option>';
-    cats.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.icon} ${c.name}</option>`; });
+    cats.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
     sel.value = cur;
   });
 
@@ -789,6 +786,7 @@ let _resetAddMovieForm = null;
       AppState.editingMovieId = null;
       _resetAddMovieForm();
       navigateTo('movie-detail');
+      AppState.prevView = AppState._preEditPrevView || 'movies'; // restaura destino correto
       openMovieDetail(id);
     } else {
       navigateTo(AppState.prevView || 'movies');
@@ -815,6 +813,7 @@ let _resetAddMovieForm = null;
         AppState.editingMovieId = null;
         _resetAddMovieForm();
         navigateTo('movie-detail');
+        AppState.prevView = AppState._preEditPrevView || 'movies';
         openMovieDetail(editedId);
       } else {
         await Movies.addMovie(data, _coverFile);
@@ -832,6 +831,7 @@ let _resetAddMovieForm = null;
 
 function openEditMovie(movie) {
   AppState.editingMovieId = movie.id;
+  AppState._preEditPrevView = AppState.prevView; // salva o destino de "voltar" original
   _prefillEditForm(movie);
   navigateTo('add-movie');
 }
