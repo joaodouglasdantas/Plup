@@ -184,24 +184,39 @@ const Movies = (() => {
   async function rateMovie(coupleId, movieId, stars) {
     const uid = Auth.getCurrentUser().uid;
     const ratingId = `${coupleId}_${movieId}_${uid}`;
-    const exists = (await db.collection('ratings').doc(ratingId).get()).exists;
 
     await db.collection('ratings').doc(ratingId).set({
       coupleId, movieId, stars, userId: uid,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    if (!exists) {
-      await Couple.recalcScore(coupleId);
-      const movieDoc = await getMovie(movieId);
+    await Couple.recalcScore(coupleId);
+
+    // Verificar se o parceiro também já avaliou
+    const coupleSnap = await db.collection('couples').doc(coupleId).get();
+    const coupleData = coupleSnap.data();
+    const partnerUid = coupleData.user1 === uid ? coupleData.user2 : coupleData.user1;
+    const partnerSnap = await db.collection('ratings').doc(`${coupleId}_${movieId}_${partnerUid}`).get();
+    const movieDoc = await getMovie(movieId);
+    const name = Auth.getUserDoc()?.name || 'Parceiro(a)';
+
+    if (partnerSnap.exists) {
+      // Ambos avaliaram — publicar média no feed
+      const avg = Math.round((stars + partnerSnap.data().stars) * 10 / 2) / 10;
       await _addFeedEvent(coupleId, 'rated', {
-        movieId, movieTitle: movieDoc?.title || '', coverUrl: movieDoc?.coverUrl || '', stars,
-        userId: uid, userName: Auth.getUserDoc()?.name || ''
+        movieId, movieTitle: movieDoc?.title || '', coverUrl: movieDoc?.coverUrl || '',
+        stars: avg
       });
-      const name = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
       await _notifyPartner(coupleId, uid, {
         type: 'partner_rated',
-        message: `${name} avaliou "${movieDoc?.title || 'um filme'}" com ${stars}★`,
+        message: `Vocês dois avaliaram "${movieDoc?.title || 'um filme'}" — média: ${avg}★`,
+        movieId
+      });
+    } else {
+      // Apenas um avaliou — só notifica o parceiro pra avaliar
+      await _notifyPartner(coupleId, uid, {
+        type: 'partner_rated',
+        message: `${name} avaliou "${movieDoc?.title || 'um filme'}" com ${stars}★ — avalie também!`,
         movieId
       });
     }
