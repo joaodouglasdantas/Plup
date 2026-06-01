@@ -190,8 +190,19 @@ const Feed = (() => {
     await batch.commit();
   }
 
+  // ── Feed do admin — todos os posts, sem filtro de casal ──
+  function onAdminFeed(callback) {
+    return db.collection('feed')
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+      .onSnapshot(snap => {
+        const events = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        callback(events);
+      }, err => console.error('admin feed:', err));
+  }
+
   return {
-    loadFeed, onOwnFeed, onFeed, renderFeedCard,
+    loadFeed, onOwnFeed, onFeed, onAdminFeed, renderFeedCard,
     onNotifications, markNotifRead, markAllNotifsRead
   };
 })();

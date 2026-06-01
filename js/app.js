@@ -279,21 +279,19 @@ let _feedRenderGen = 0;
 
 async function initFeedView() {
   const coupleId = AppState.coupleDoc?.id;
-  if (!coupleId) return;
+  const isAdmin  = Auth.isAdmin();
 
-  updateCoupleQuickCard(AppState.coupleDoc);
+  if (!coupleId && !isAdmin) return;
 
-  // Cancelar listener anterior
+  if (coupleId) updateCoupleQuickCard(AppState.coupleDoc);
+
   if (AppState._feedUnsub) { AppState._feedUnsub(); AppState._feedUnsub = null; }
 
   showLoading(true);
   let firstEmit = true;
 
   try {
-    const followingIds = await Couple.getFollowing(coupleId);
-    const allIds = [coupleId, ...followingIds];
-
-    AppState._feedUnsub = Feed.onFeed(allIds, async (events) => {
+    const onEvents = async (events) => {
       const gen = ++_feedRenderGen;
       if (firstEmit) { showLoading(false); firstEmit = false; }
 
@@ -312,26 +310,31 @@ async function initFeedView() {
 
       container.innerHTML = '';
       for (const ev of events) {
-        const coupleDoc = await Couple.getCoupleDoc(ev.coupleId);
+        const evCouple = await Couple.getCoupleDoc(ev.coupleId);
         if (gen !== _feedRenderGen) return;
-        if (!coupleDoc) continue;
+        if (!evCouple) continue;
 
-        // Se o evento referencia um filme, verificar se ele ainda existe
         if (ev.movieId) {
           const movie = await Movies.getMovie(ev.movieId);
           if (gen !== _feedRenderGen) return;
           if (!movie) {
-            // Filme deletado: limpar doc órfão do feed silenciosamente
             db.collection('feed').doc(ev.id).delete().catch(() => {});
             continue;
           }
         }
 
-        const card = await Feed.renderFeedCard(ev, coupleDoc, AppState.categories);
+        const card = await Feed.renderFeedCard(ev, evCouple, AppState.categories);
         if (gen !== _feedRenderGen) return;
         container.appendChild(card);
       }
-    });
+    };
+
+    if (isAdmin && !coupleId) {
+      AppState._feedUnsub = Feed.onAdminFeed(onEvents);
+    } else {
+      const followingIds = await Couple.getFollowing(coupleId);
+      AppState._feedUnsub = Feed.onFeed([coupleId, ...followingIds], onEvents);
+    }
   } catch(e) {
     console.error(e);
     showLoading(false);

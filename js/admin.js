@@ -274,7 +274,9 @@ const Admin = (() => {
       if (!confirm('Deletar todos os eventos de avaliação individual do feed? Esta ação não pode ser desfeita.')) return;
       showLoading(true);
       try {
-        const snap = await db.collection('feed').where('type', '==', 'rated').where('userId', '>', '').get();
+        const allRated = await db.collection('feed').where('type', '==', 'rated').get();
+        const snap = { docs: allRated.docs.filter(d => d.data().userId), size: 0 };
+        snap.size = snap.docs.length;
         if (snap.empty) { showToast('Nenhum evento antigo encontrado'); return; }
         const chunks = [];
         for (let i = 0; i < snap.docs.length; i += 500) chunks.push(snap.docs.slice(i, i + 500));
