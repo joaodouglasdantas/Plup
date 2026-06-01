@@ -498,6 +498,7 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
     const ageEl = document.getElementById('movie-detail-age');
     ageEl.textContent = age?.label || '';
     ageEl.style.background = age?.color || '';
+    ageEl.style.color = age?.color ? '#fff' : '';
     ageEl.style.display = age?.label ? '' : 'none';
 
     const coupleId  = AppState.coupleDoc?.id;
@@ -867,11 +868,23 @@ let _resetAddMovieForm = null;
     const prev = new Set([...container.querySelectorAll('.chip-opt.active')].map(el => el.dataset.id));
     container.innerHTML = cats.map(c => {
       const active = prev.has(c.id);
-      const style = c.color ? `style="background:${c.color};color:#fff;border-color:${c.color}"` : '';
+      const style = c.color
+        ? active
+          ? `style="background:${c.color};color:#fff;border-color:${c.color}"`
+          : `style="background:transparent;color:${c.color};border-color:${c.color}"`
+        : '';
       return `<span class="chip-opt${active ? ' active' : ''}" data-id="${c.id}" ${style}>${c.name}</span>`;
     }).join('');
     container.querySelectorAll('.chip-opt').forEach(chip => {
-      chip.addEventListener('click', () => chip.classList.toggle('active'));
+      chip.addEventListener('click', () => {
+        const nowActive = !chip.classList.contains('active');
+        chip.classList.toggle('active', nowActive);
+        const color = chip.style.color && chip.style.borderColor ? chip.style.borderColor : null;
+        if (color) {
+          chip.style.background = nowActive ? color : 'transparent';
+          chip.style.color = nowActive ? '#fff' : color;
+        }
+      });
     });
   });
 
@@ -1178,6 +1191,7 @@ async function loadProfileTab(coupleId, tab, isOwn = true) {
       img.className = 'profile-movie-thumb';
       img.src = movie.coverUrl || '';
       img.alt = movie.title;
+      img.style.objectPosition = movie.coverPosition || '50% 50%';
       img.style.background = 'linear-gradient(135deg,var(--navy),var(--blue))';
       if (!movie.coverUrl) img.style.display = 'none';
       img.loading = 'lazy';
