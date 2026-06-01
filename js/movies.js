@@ -201,8 +201,20 @@ const Movies = (() => {
     const name = Auth.getUserDoc()?.name || 'Parceiro(a)';
 
     if (partnerSnap.exists) {
-      // Ambos avaliaram — publicar média no feed
+      // Ambos avaliaram — remover evento anterior e publicar média atualizada
       const avg = Math.round((stars + partnerSnap.data().stars) * 10 / 2) / 10;
+
+      // Deletar qualquer evento 'rated' existente para este casal+filme
+      const oldEvents = await db.collection('feed')
+        .where('coupleId', '==', coupleId)
+        .where('type', '==', 'rated')
+        .where('movieId', '==', movieId)
+        .get();
+      const batch = db.batch();
+      oldEvents.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+
+      // Criar único evento com a média atual
       await _addFeedEvent(coupleId, 'rated', {
         movieId, movieTitle: movieDoc?.title || '', coverUrl: movieDoc?.coverUrl || '',
         stars: avg
