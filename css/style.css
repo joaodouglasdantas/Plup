@@ -524,6 +524,31 @@ textarea { resize: vertical; }
 .chip.active { background: var(--blue); color: var(--white); border-color: var(--blue); }
 .chip:hover:not(.active) { background: var(--gray-3); }
 
+/* Chips multi-select no formulário de filme */
+.input-group-chips { align-items: flex-start; }
+.input-group-chips .input-icon { margin-top: 12px; }
+.category-chips-select {
+  flex: 1; display: flex; flex-wrap: wrap; gap: 8px;
+  padding: 10px 12px; min-height: 44px;
+  background: var(--gray-1); border: 1.5px solid var(--gray-3);
+  border-radius: var(--radius); cursor: default;
+}
+.chips-placeholder { color: var(--gray-4); font-size: 0.88rem; align-self: center; }
+.chip-opt {
+  display: inline-flex; align-items: center;
+  padding: 4px 12px; border-radius: 100px;
+  background: var(--gray-2); color: var(--gray-5);
+  font-size: 0.78rem; font-weight: 700;
+  border: 1.5px solid var(--gray-3); cursor: pointer;
+  transition: var(--transition); user-select: none;
+}
+.chip-opt.active {
+  background: var(--blue); color: #fff; border-color: var(--blue);
+}
+.chip-opt:hover:not(.active) { background: var(--gray-3); }
+/* Múltiplos badges no detalhe do filme */
+.movie-detail-cats { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+
 .movies-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
 .movie-card {
   background: var(--white); border-radius: var(--radius);

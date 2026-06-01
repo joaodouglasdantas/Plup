@@ -416,13 +416,19 @@ function loadMoviesGrid(catId) {
   _currentCat = catId;
   if (_moviesUnsub) {
     // Listener já ativo — só refiltra client-side
-    const filtered = catId === 'all' ? _moviesAll : _moviesAll.filter(m => m.categoryId === catId);
+    const filtered = catId === 'all' ? _moviesAll : _moviesAll.filter(m => {
+      const ids = m.categoryIds || (m.categoryId ? [m.categoryId] : []);
+      return ids.includes(catId);
+    });
     renderMoviesGrid(filtered);
   } else {
     // Primeiro acesso — abre listener para TODOS os filmes
     _moviesUnsub = Movies.onMovies(movies => {
       _moviesAll = movies;
-      const filtered = _currentCat === 'all' ? movies : movies.filter(m => m.categoryId === _currentCat);
+      const filtered = _currentCat === 'all' ? movies : movies.filter(m => {
+        const ids = m.categoryIds || (m.categoryId ? [m.categoryId] : []);
+        return ids.includes(_currentCat);
+      });
       renderMoviesGrid(filtered);
     });
   }
@@ -435,8 +441,11 @@ function renderMoviesGrid(movies) {
     return;
   }
   grid.innerHTML = movies.map(m => {
-    const cat = AppState.categories.find(c => c.id === m.categoryId);
-    const rating = ''; // simplificado
+    const ids = m.categoryIds || (m.categoryId ? [m.categoryId] : []);
+    const catBadges = AppState.categories
+      .filter(c => ids.includes(c.id))
+      .map(c => `<span class="badge-cat-card" ${c.color ? `style="background:${c.color};color:#fff"` : ''}>${c.name}</span>`)
+      .join('');
     return `
       <div class="movie-card" onclick="openMovieDetail('${m.id}')">
         ${m.coverUrl
@@ -444,7 +453,7 @@ function renderMoviesGrid(movies) {
           : `<div class="movie-card-cover"></div>`}
         <div class="movie-card-info">
           <div class="movie-card-title">${m.title}</div>
-          <div class="movie-card-cat">${cat ? `<span class="badge-cat-card" ${cat.color ? `style="background:${cat.color};color:#fff"` : ''}>${cat.name}</span>` : ''}</div>
+          <div class="movie-card-cat" style="display:flex;flex-wrap:wrap;gap:4px">${catBadges}</div>
         </div>
       </div>
     `;
@@ -479,12 +488,13 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
     coverEl.style.objectPosition = movie.coverPosition || '50% 50%';
     coverEl.style.display = movie.coverUrl ? '' : 'none';
 
-    const cat = AppState.categories.find(c => c.id === movie.categoryId);
     const age = AppState.ageRatings.find(a => a.id === movie.ageRatingId);
     const catEl = document.getElementById('movie-detail-cat');
-    catEl.innerHTML = cat ? cat.name : '—';
-    if (cat?.color) { catEl.style.background = cat.color; catEl.style.color = '#fff'; }
-    else { catEl.style.background = ''; catEl.style.color = ''; }
+    const catIds = movie.categoryIds || (movie.categoryId ? [movie.categoryId] : []);
+    const matchedCats = AppState.categories.filter(c => catIds.includes(c.id));
+    catEl.innerHTML = matchedCats.length
+      ? matchedCats.map(c => `<span class="badge-cat" ${c.color ? `style="background:${c.color};color:#fff"` : ''}>${c.name}</span>`).join('')
+      : '—';
     const ageEl = document.getElementById('movie-detail-age');
     ageEl.textContent = age?.label || '';
     ageEl.style.background = age?.color || '';
@@ -836,8 +846,11 @@ let _resetAddMovieForm = null;
     document.getElementById('movie-title').value      = movie.title       || '';
     document.getElementById('movie-desc-input').value = movie.description || '';
     setTimeout(() => {
-      document.getElementById('movie-category').value = movie.categoryId  || '';
-      document.getElementById('movie-age').value      = movie.ageRatingId || '';
+      const ids = movie.categoryIds || (movie.categoryId ? [movie.categoryId] : []);
+      document.getElementById('movie-category-chips').querySelectorAll('.chip-opt').forEach(chip => {
+        chip.classList.toggle('active', ids.includes(chip.dataset.id));
+      });
+      document.getElementById('movie-age').value = movie.ageRatingId || '';
     }, 100);
     if (movie.coverUrl) _showCover(movie.coverUrl, movie.coverPosition || '50% 50%');
     else _hideCover();
@@ -848,11 +861,18 @@ let _resetAddMovieForm = null;
 
   // Preencher selects com categorias e idades
   Movies.onCategories(cats => {
-    const sel = document.getElementById('movie-category');
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">Selecionar categoria</option>';
-    cats.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
-    sel.value = cur;
+    AppState.categories = cats;
+    const container = document.getElementById('movie-category-chips');
+    if (!container) return;
+    const prev = new Set([...container.querySelectorAll('.chip-opt.active')].map(el => el.dataset.id));
+    container.innerHTML = cats.map(c => {
+      const active = prev.has(c.id);
+      const style = c.color ? `style="background:${c.color};color:#fff;border-color:${c.color}"` : '';
+      return `<span class="chip-opt${active ? ' active' : ''}" data-id="${c.id}" ${style}>${c.name}</span>`;
+    }).join('');
+    container.querySelectorAll('.chip-opt').forEach(chip => {
+      chip.addEventListener('click', () => chip.classList.toggle('active'));
+    });
   });
 
   Movies.onAgeRatings(ages => {
@@ -898,10 +918,12 @@ let _resetAddMovieForm = null;
     e.preventDefault();
     if (!AppState.user) { showToast('Faça login primeiro'); return; }
 
+    const categoryIds = [...document.getElementById('movie-category-chips').querySelectorAll('.chip-opt.active')].map(el => el.dataset.id);
+    if (!categoryIds.length) { showToast('Selecione ao menos uma categoria'); return; }
     const data = {
       title:         document.getElementById('movie-title').value,
       description:   document.getElementById('movie-desc-input').value,
-      categoryId:    document.getElementById('movie-category').value,
+      categoryIds,
       ageRatingId:   document.getElementById('movie-age').value,
       coverPosition: _coverPos || '50% 50%'
     };

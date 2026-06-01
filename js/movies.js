@@ -101,7 +101,7 @@ const Movies = (() => {
     const docRef = await db.collection('movies').add({
       title:          data.title.trim(),
       description:    data.description.trim(),
-      categoryId:     data.categoryId,
+      categoryIds:    data.categoryIds || [],
       ageRatingId:    data.ageRatingId,
       coverUrl,
       coverPosition:  data.coverPosition || '50% 50%',
@@ -135,7 +135,7 @@ const Movies = (() => {
     const updates = {
       title:         data.title.trim(),
       description:   data.description.trim(),
-      categoryId:    data.categoryId,
+      categoryIds:   data.categoryIds || [],
       ageRatingId:   data.ageRatingId,
       coverPosition: data.coverPosition || '50% 50%',
       updatedAt:     firebase.firestore.FieldValue.serverTimestamp()
@@ -195,7 +195,8 @@ const Movies = (() => {
       await Couple.recalcScore(coupleId);
       const movieDoc = await getMovie(movieId);
       await _addFeedEvent(coupleId, 'rated', {
-        movieId, movieTitle: movieDoc?.title || '', coverUrl: movieDoc?.coverUrl || '', stars
+        movieId, movieTitle: movieDoc?.title || '', coverUrl: movieDoc?.coverUrl || '', stars,
+        userId: uid, userName: Auth.getUserDoc()?.name || ''
       });
       const name = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
       await _notifyPartner(coupleId, uid, {

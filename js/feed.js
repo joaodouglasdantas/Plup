@@ -101,10 +101,18 @@ const Feed = (() => {
       case 'watched':
         actionText = '<i class="fa-solid fa-check"></i> assistiu a um filme!';
         break;
-      case 'rated':
-        actionText = `<i class="fa-solid fa-star"></i> avaliou com ${event.stars} estrela${event.stars !== 1 ? 's' : ''}`;
+      case 'rated': {
+        const rater = event.userId
+          ? (event.userId === coupleDoc.user1 ? u1 : u2)
+          : null;
+        const raterName = rater?.name || event.userName || 'Alguém';
+        const raterAvatar = rater?.avatarUrl
+          ? `<img src="${rater.avatarUrl}" alt="" style="width:20px;height:20px;border-radius:50%;object-fit:cover;margin-right:4px;vertical-align:middle">`
+          : '';
+        actionText = `${raterAvatar}<strong>${raterName}</strong> avaliou com ${event.stars}★`;
         starsHtml  = `<div class="feed-card-stars">${_renderStars(event.stars)}</div>`;
         break;
+      }
       case 'movie_added':
         actionText = '<i class="fa-solid fa-film"></i> adicionou um filme à plataforma!';
         break;

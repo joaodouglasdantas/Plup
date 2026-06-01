@@ -306,7 +306,7 @@
             <div>
               <h1 id="movie-detail-title">—</h1>
               <div class="movie-meta">
-                <span class="badge-cat" id="movie-detail-cat">—</span>
+                <span id="movie-detail-cat" class="movie-detail-cats">—</span>
                 <span class="badge-age" id="movie-detail-age">—</span>
               </div>
             </div>
@@ -375,11 +375,11 @@
               <i class="fa-solid fa-align-left input-icon"></i>
               <textarea id="movie-desc-input" placeholder="Descrição / sinopse" rows="3" required></textarea>
             </div>
-            <div class="input-group">
+            <div class="input-group input-group-chips">
               <i class="fa-solid fa-tag input-icon"></i>
-              <select id="movie-category" required>
-                <option value="">Selecionar categoria</option>
-              </select>
+              <div id="movie-category-chips" class="category-chips-select">
+                <span class="chips-placeholder">Selecionar categorias</span>
+              </div>
             </div>
             <div class="input-group">
               <i class="fa-solid fa-user-shield input-icon"></i>
