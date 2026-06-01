@@ -1040,6 +1040,7 @@ function _resetProfileView(isOwn) {
   document.getElementById('profile-avatar1').innerHTML = '<i class="fa-solid fa-user"></i>';
   document.getElementById('profile-avatar2').innerHTML = '<i class="fa-solid fa-user"></i>';
   document.getElementById('profile-back-btn').classList.toggle('hidden', isOwn);
+  document.getElementById('profile-settings-btn').classList.toggle('hidden', !isOwn);
   document.getElementById('profile-own-actions').classList.toggle('hidden', !isOwn);
   document.getElementById('profile-other-actions').classList.toggle('hidden', isOwn);
 }
