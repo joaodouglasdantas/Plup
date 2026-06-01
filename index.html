@@ -560,6 +560,7 @@
             <button class="admin-tab" data-atab="reports">Denúncias</button>
             <button class="admin-tab" data-atab="movies-mod">Filmes</button>
             <button class="admin-tab" data-atab="score-config">Score</button>
+            <button class="admin-tab" data-atab="maintenance">Manutenção</button>
           </div>
 
           <div class="admin-panel active" id="admin-categories">
@@ -620,6 +621,26 @@
               <button class="btn btn-primary" id="btn-save-score-config">
                 <i class="fa-solid fa-floppy-disk"></i> Salvar configuração
               </button>
+            </div>
+          </div>
+
+          <div class="admin-panel" id="admin-maintenance">
+            <h3>Manutenção</h3>
+            <div class="admin-list">
+              <div class="admin-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+                <span class="admin-item-name">Limpar feed antigo</span>
+                <span style="font-size:.8rem;color:var(--gray-5)">Remove posts do feed com mais de 30 dias</span>
+                <button class="btn btn-ghost btn-danger btn-sm" id="btn-clear-old-feed">
+                  <i class="fa-solid fa-trash"></i> Executar limpeza
+                </button>
+              </div>
+              <div class="admin-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+                <span class="admin-item-name">Limpar avaliações individuais</span>
+                <span style="font-size:.8rem;color:var(--gray-5)">Remove eventos antigos de avaliação individual do feed</span>
+                <button class="btn btn-ghost btn-danger btn-sm" id="btn-clear-old-ratings">
+                  <i class="fa-solid fa-trash"></i> Executar limpeza
+                </button>
+              </div>
             </div>
           </div>
         </div>

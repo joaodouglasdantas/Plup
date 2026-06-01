@@ -247,6 +247,46 @@ const Admin = (() => {
       await db.collection('config').doc('score').set(newCfg);
       showToast('Configuração de score salva! ✅');
     };
+
+    document.getElementById('btn-clear-old-feed').onclick = async () => {
+      if (!confirm('Remover todos os posts do feed com mais de 30 dias? Esta ação não pode ser desfeita.')) return;
+      showLoading(true);
+      try {
+        const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const snap = await db.collection('feed')
+          .where('createdAt', '<', firebase.firestore.Timestamp.fromDate(cutoff))
+          .get();
+        if (snap.empty) { showToast('Nenhum post antigo encontrado'); return; }
+        // Batch suporta até 500 operações
+        const chunks = [];
+        for (let i = 0; i < snap.docs.length; i += 500) chunks.push(snap.docs.slice(i, i + 500));
+        for (const chunk of chunks) {
+          const batch = db.batch();
+          chunk.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        }
+        showToast(`${snap.size} post(s) removido(s) ✅`);
+      } catch(e) { showToast('Erro: ' + e.message); }
+      finally { showLoading(false); }
+    };
+
+    document.getElementById('btn-clear-old-ratings').onclick = async () => {
+      if (!confirm('Deletar todos os eventos de avaliação individual do feed? Esta ação não pode ser desfeita.')) return;
+      showLoading(true);
+      try {
+        const snap = await db.collection('feed').where('type', '==', 'rated').where('userId', '>', '').get();
+        if (snap.empty) { showToast('Nenhum evento antigo encontrado'); return; }
+        const chunks = [];
+        for (let i = 0; i < snap.docs.length; i += 500) chunks.push(snap.docs.slice(i, i + 500));
+        for (const chunk of chunks) {
+          const batch = db.batch();
+          chunk.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        }
+        showToast(`${snap.size} evento(s) removido(s) ✅`);
+      } catch(e) { showToast('Erro: ' + e.message); }
+      finally { showLoading(false); }
+    };
   }
 
   return {

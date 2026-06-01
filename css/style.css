@@ -905,7 +905,11 @@ textarea { resize: vertical; }
    ADMIN
 ════════════════════════════════════════════════ */
 .admin-container { flex: 1; overflow-y: auto; padding: 0 16px 24px; }
-.admin-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0; scrollbar-width: none; }
+.admin-tabs {
+  display: flex; gap: 6px; overflow-x: auto; padding: 12px 0;
+  scrollbar-width: none; position: sticky; top: 0; z-index: 10;
+  background: var(--gray-1);
+}
 .admin-tabs::-webkit-scrollbar { display: none; }
 .admin-tab {
   padding: 7px 14px; border-radius: 100px;
