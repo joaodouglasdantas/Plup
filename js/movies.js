@@ -87,10 +87,10 @@ const Movies = (() => {
   }
 
   // ── Adicionar filme ───────────────────────
-  async function addMovie(data, coverFile) {
+  async function addMovie(data, coverFile, coverUrlFallback) {
     const uid = Auth.getCurrentUser().uid;
     const userDoc = Auth.getUserDoc();
-    let coverUrl = '';
+    let coverUrl = coverUrlFallback || '';
 
     if (coverFile) {
       const ref = storage.ref(`covers/${Date.now()}_${coverFile.name}`);
@@ -105,6 +105,15 @@ const Movies = (() => {
       ageRatingId:    data.ageRatingId,
       coverUrl,
       coverPosition:  data.coverPosition || '50% 50%',
+      // Tipo de conteúdo
+      type:           data.type || 'movie',       // 'movie' | 'series' | 'anime'
+      tmdbId:         data.tmdbId || null,
+      // Série / Anime com temporadas
+      seasons:        data.seasons || null,        // [{number, name, episodes}]
+      totalSeasons:   data.totalSeasons || null,
+      // Anime sequencial
+      animeFormat:    data.animeFormat || null,    // 'sequential' | 'seasons'
+      totalEpisodes:  data.totalEpisodes || null,
       addedBy:     uid,
       addedByName: userDoc.name,
       addedByCoupleId: userDoc.coupleId || null,
@@ -131,13 +140,20 @@ const Movies = (() => {
   }
 
   // ── Editar filme ──────────────────────────
-  async function updateMovie(movieId, data, coverFile) {
+  async function updateMovie(movieId, data, coverFile, coverUrlFallback) {
     const updates = {
       title:         data.title.trim(),
       description:   data.description.trim(),
       categoryIds:   data.categoryIds || [],
       ageRatingId:   data.ageRatingId,
       coverPosition: data.coverPosition || '50% 50%',
+      // Tipo de conteúdo
+      type:          data.type || 'movie',
+      tmdbId:        data.tmdbId ?? null,
+      seasons:       data.seasons ?? null,
+      totalSeasons:  data.totalSeasons ?? null,
+      animeFormat:   data.animeFormat ?? null,
+      totalEpisodes: data.totalEpisodes ?? null,
       updatedAt:     firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -145,6 +161,8 @@ const Movies = (() => {
       const ref = storage.ref(`covers/${Date.now()}_${coverFile.name}`);
       await ref.put(coverFile);
       updates.coverUrl = await ref.getDownloadURL();
+    } else if (coverUrlFallback) {
+      updates.coverUrl = coverUrlFallback;
     }
 
     await db.collection('movies').doc(movieId).update(updates);

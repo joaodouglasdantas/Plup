@@ -348,13 +348,40 @@
         </div>
       </div>
 
-      <!-- ── ADICIONAR FILME ────────────────── -->
+      <!-- ── ADICIONAR / EDITAR CONTEÚDO ──────── -->
       <div id="view-add-movie" class="view">
         <div class="top-bar">
           <button class="btn-back" id="add-movie-back"><i class="fa-solid fa-arrow-left"></i></button>
-          <h2>Adicionar Filme</h2>
+          <h2 id="add-movie-title">Adicionar</h2>
         </div>
         <div class="add-movie-container">
+
+          <!-- Tabs de tipo de conteúdo -->
+          <div class="content-type-tabs" id="content-type-tabs">
+            <button class="content-type-tab active" data-ctype="movie">🎬 Filme</button>
+            <button class="content-type-tab" data-ctype="series">📺 Série</button>
+            <button class="content-type-tab" data-ctype="anime">🎌 Anime</button>
+          </div>
+
+          <!-- Busca no TMDB -->
+          <div class="tmdb-search-wrap">
+            <div class="search-bar">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="tmdb-search-input" placeholder="Buscar no TMDB..." autocomplete="off" />
+              <i class="fa-solid fa-spinner fa-spin tmdb-spinner hidden" id="tmdb-spinner"></i>
+            </div>
+            <div id="tmdb-results" class="tmdb-results hidden"></div>
+            <div id="tmdb-selected" class="tmdb-selected-badge hidden">
+              <i class="fa-solid fa-circle-check"></i>
+              <span id="tmdb-selected-name">—</span>
+              <button type="button" id="tmdb-clear-selection" title="Limpar seleção">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <p class="tmdb-hint" id="tmdb-hint">Ou preencha manualmente abaixo</p>
+          </div>
+
+          <!-- Upload de capa -->
           <div class="cover-upload" id="cover-upload-area">
             <input type="file" id="cover-file" accept="image/*" hidden />
             <div class="cover-placeholder" id="cover-placeholder">
@@ -366,10 +393,11 @@
               <i class="fa-solid fa-arrows-up-down-left-right"></i> Arraste para reposicionar
             </div>
           </div>
+
           <form id="form-add-movie">
             <div class="input-group">
               <i class="fa-solid fa-film input-icon"></i>
-              <input type="text" id="movie-title" placeholder="Título do filme" required />
+              <input type="text" id="movie-title" placeholder="Título" required />
             </div>
             <div class="input-group">
               <i class="fa-solid fa-align-left input-icon"></i>
@@ -387,11 +415,64 @@
                 <option value="">Classificação etária</option>
               </select>
             </div>
-            <button type="submit" class="btn btn-primary btn-full">
-              <i class="fa-solid fa-upload"></i> Publicar Filme
+
+            <!-- ── Campos de Série ─────────────── -->
+            <div id="series-fields" class="extra-fields hidden">
+              <div class="extra-fields-title">
+                <i class="fa-solid fa-tv"></i> Temporadas
+              </div>
+              <div class="seasons-header-row">
+                <div class="input-group" style="flex:1;margin:0">
+                  <i class="fa-solid fa-layer-group input-icon"></i>
+                  <input type="number" id="series-seasons-count" min="1" max="200" placeholder="Nº de temporadas" />
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" id="btn-apply-seasons">
+                  <i class="fa-solid fa-sliders"></i> Configurar eps
+                </button>
+              </div>
+              <div id="seasons-detail-list" class="seasons-detail-list"></div>
+            </div>
+
+            <!-- ── Campos de Anime ─────────────── -->
+            <div id="anime-fields" class="extra-fields hidden">
+              <div class="extra-fields-title">
+                <i class="fa-solid fa-star"></i> Formato
+              </div>
+              <div class="anime-format-row">
+                <label class="radio-opt">
+                  <input type="radio" name="anime-format" value="sequential" checked />
+                  <span>Episódios sequenciais</span>
+                </label>
+                <label class="radio-opt">
+                  <input type="radio" name="anime-format" value="seasons" />
+                  <span>Por temporada</span>
+                </label>
+              </div>
+              <div id="anime-sequential-section">
+                <div class="input-group">
+                  <i class="fa-solid fa-list-ol input-icon"></i>
+                  <input type="number" id="anime-total-eps" min="1" max="10000" placeholder="Total de episódios" />
+                </div>
+              </div>
+              <div id="anime-seasons-section" class="hidden">
+                <div class="seasons-header-row">
+                  <div class="input-group" style="flex:1;margin:0">
+                    <i class="fa-solid fa-layer-group input-icon"></i>
+                    <input type="number" id="anime-seasons-count" min="1" max="200" placeholder="Nº de temporadas" />
+                  </div>
+                  <button type="button" class="btn btn-ghost btn-sm" id="btn-apply-anime-seasons">
+                    <i class="fa-solid fa-sliders"></i> Configurar eps
+                  </button>
+                </div>
+                <div id="anime-seasons-detail-list" class="seasons-detail-list"></div>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-full" id="add-movie-submit">
+              <i class="fa-solid fa-upload"></i> Publicar
             </button>
             <button type="button" class="btn btn-ghost btn-danger btn-full hidden" id="btn-delete-movie">
-              <i class="fa-solid fa-trash"></i> Excluir filme
+              <i class="fa-solid fa-trash"></i> Excluir
             </button>
           </form>
         </div>
@@ -715,6 +796,7 @@
 
   <!-- App Scripts -->
   <script src="js/firebase-config.js"></script>
+  <script src="js/tmdb.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/couple.js"></script>
   <script src="js/movies.js"></script>
