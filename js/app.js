@@ -1060,10 +1060,12 @@ let _resetAddMovieForm = null;
         }
       }
 
-      // Badge de seleção
+      // Badge de seleção — some automaticamente após 4 segundos
       document.getElementById('tmdb-selected-name').textContent = data.title;
       tmdbSelected.classList.remove('hidden');
       tmdbHint.classList.add('hidden');
+      clearTimeout(tmdbSelected._hideTimeout);
+      tmdbSelected._hideTimeout = setTimeout(() => tmdbSelected.classList.add('hidden'), 4000);
 
       showToast(`"${data.title}" carregado do TMDB ✅`);
     } catch(err) {
