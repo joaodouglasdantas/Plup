@@ -1238,6 +1238,7 @@ textarea { resize: vertical; }
     padding: 24px;
     gap: 24px;
     align-items: flex-start;
+    align-content: flex-start;
   }
   /* Tabs e busca TMDB ocupam toda a largura */
   .add-movie-container .content-type-tabs,
