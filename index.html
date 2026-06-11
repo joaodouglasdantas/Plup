@@ -183,6 +183,10 @@
           <i class="fa-solid fa-heart"></i>
           <span>Perfil</span>
         </button>
+        <button class="sidebar-btn" data-nav="watching">
+          <i class="fa-solid fa-play-circle"></i>
+          <span>Assistindo</span>
+        </button>
         <button class="sidebar-btn" data-nav="watchlist">
           <i class="fa-solid fa-clock"></i>
           <span>Ver depois</span>
@@ -244,6 +248,10 @@
               <i class="fa-solid fa-film qa-icon"></i>
               <span>Filmes</span>
             </button>
+            <button class="qa-btn" data-nav="watching">
+              <i class="fa-solid fa-play-circle qa-icon"></i>
+              <span>Assistindo</span>
+            </button>
             <button class="qa-btn" data-nav="watchlist">
               <i class="fa-solid fa-clock qa-icon"></i>
               <span>Ver depois</span>
@@ -251,10 +259,6 @@
             <button class="qa-btn" data-nav="favorites">
               <i class="fa-solid fa-bookmark qa-icon"></i>
               <span>Favoritos</span>
-            </button>
-            <button class="qa-btn" data-nav="add-movie">
-              <i class="fa-solid fa-circle-plus qa-icon"></i>
-              <span>Adicionar</span>
             </button>
           </div>
 
@@ -336,6 +340,9 @@
             <div class="couple-ratings-info" id="couple-ratings-info"></div>
             <button class="btn btn-primary" id="btn-rate-movie">
               <i class="fa-solid fa-star"></i> Avaliar
+            </button>
+            <button class="btn btn-watching" id="btn-mark-watching">
+              <i class="fa-solid fa-play-circle"></i> Assistindo
             </button>
             <button class="btn btn-success" id="btn-mark-watched">
               <i class="fa-solid fa-check"></i> Marcar como assistido
@@ -478,6 +485,15 @@
         </div>
       </div>
 
+      <!-- ── ASSISTINDO ────────────────────── -->
+      <div id="view-watching" class="view">
+        <div class="top-bar">
+          <button class="btn-back" data-nav="feed"><i class="fa-solid fa-arrow-left"></i></button>
+          <h2><i class="fa-solid fa-play-circle"></i> Assistindo</h2>
+        </div>
+        <div class="list-container" id="watching-container"></div>
+      </div>
+
       <!-- ── WATCHLIST ──────────────────────── -->
       <div id="view-watchlist" class="view">
         <div class="top-bar">
@@ -535,6 +551,7 @@
         </div>
         <div class="profile-tabs">
           <button class="profile-tab active" data-ptab="watched">Assistidos</button>
+          <button class="profile-tab" data-ptab="watching">Assistindo</button>
           <button class="profile-tab" data-ptab="favorites">Favoritos</button>
           <button class="profile-tab" data-ptab="watchlist">Ver depois</button>
         </div>

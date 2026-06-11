@@ -76,6 +76,12 @@ service cloud.firestore {
       allow write: if isAuth() && inCouple(resource.data.coupleId != null ? resource.data.coupleId : request.resource.data.coupleId);
     }
 
+    // ── Assistindo ────────────────────────
+    match /watching/{id} {
+      allow read:  if isAuth();
+      allow write: if isAuth() && inCouple(resource.data.coupleId != null ? resource.data.coupleId : request.resource.data.coupleId);
+    }
+
     // ── Watchlist ─────────────────────────
     match /watchlist/{id} {
       allow read:  if isAuth();

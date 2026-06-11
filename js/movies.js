@@ -274,8 +274,9 @@ const Movies = (() => {
       watchedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Remover da watchlist se estiver
+    // Remover da watchlist e watching se estiver
     await removeFromWatchlist(coupleId, movieId);
+    await removeFromWatching(coupleId, movieId);
     await Couple.recalcScore(coupleId);
 
     // Feed event + notificação ao parceiro
@@ -308,6 +309,47 @@ const Movies = (() => {
     const snap = await db.collection('watched').where('coupleId', '==', coupleId).get();
     return snap.docs.map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.watchedAt?.seconds || 0) - (a.watchedAt?.seconds || 0));
+  }
+
+  // ── Assistindo (watching) ─────────────────
+  async function addToWatching(coupleId, movieId) {
+    const id = `${coupleId}_${movieId}`;
+    const exists = (await db.collection('watching').doc(id).get()).exists;
+    if (exists) { showToast('Já está em "Assistindo" 👀'); return; }
+
+    await db.collection('watching').doc(id).set({
+      coupleId, movieId,
+      startedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Remover da watchlist se estiver lá
+    await db.collection('watchlist').doc(id).delete();
+    showToast('Marcado como Assistindo 👀');
+
+    // Notificar parceiro
+    const uid = Auth.getCurrentUser().uid;
+    const name = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
+    const movieDoc = await getMovie(movieId);
+    await _notifyPartner(coupleId, uid, {
+      type: 'partner_watching',
+      message: `${name} começou a assistir "${movieDoc?.title || 'um conteúdo'}" 👀`,
+      movieId
+    });
+  }
+
+  async function removeFromWatching(coupleId, movieId) {
+    await db.collection('watching').doc(`${coupleId}_${movieId}`).delete();
+  }
+
+  async function isWatching(coupleId, movieId) {
+    const snap = await db.collection('watching').doc(`${coupleId}_${movieId}`).get();
+    return snap.exists;
+  }
+
+  async function getWatching(coupleId) {
+    const snap = await db.collection('watching').where('coupleId', '==', coupleId).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0));
   }
 
   // ── Watchlist ─────────────────────────────
@@ -416,7 +458,7 @@ const Movies = (() => {
     const coverUrl = movieSnap.exists ? movieSnap.data().coverUrl : null;
 
     // Deletar em paralelo todas as coleções que referenciam movieId
-    const collectionsWithMovieId = ['feed', 'watchlist', 'favorites', 'watched', 'ratings', 'notifications'];
+    const collectionsWithMovieId = ['feed', 'watchlist', 'watching', 'favorites', 'watched', 'ratings', 'notifications'];
     await Promise.all(
       collectionsWithMovieId.map(col =>
         db.collection(col).where('movieId', '==', movieId).get()
@@ -448,6 +490,7 @@ const Movies = (() => {
     addMovie, updateMovie, onMovies, searchMovies, getMovie,
     rateMovie, getRating, getPartnerRating,
     markWatched, removeFromWatched, isWatched, getWatched,
+    addToWatching, removeFromWatching, isWatching, getWatching,
     addToWatchlist, removeFromWatchlist, isInWatchlist, getWatchlist,
     addToFavorites, isInFavorites, getFavorites,
     reportMovie, deleteMovie, setApproved

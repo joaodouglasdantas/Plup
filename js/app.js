@@ -16,6 +16,7 @@ const AppState = {
   ageRatings:   [],
   currentMovieId: null,
   editingMovieId: null,
+  _watchingUnsub:  null,
   _watchlistUnsub: null,
   _favoritesUnsub: null,
 
@@ -66,6 +67,7 @@ function navigateTo(viewName, data = {}) {
       else                initProfileView(AppState.coupleDoc?.id, true);
       break;
     case 'discover':      initDiscoverView(); break;
+    case 'watching':      initWatchingView();  break;
     case 'watchlist':     initWatchlistView(); break;
     case 'favorites':     initFavoritesView(); break;
     case 'settings':      initSettingsView(); break;
@@ -512,17 +514,19 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
       : null;
 
     if (coupleId && !readOnly) {
-      const [myStars, partnerStars, inWatchlist, inFav, watched] = await Promise.all([
+      const [myStars, partnerStars, inWatchlist, inFav, watched, watching] = await Promise.all([
         Movies.getRating(coupleId, movieId),
         partnerUid ? Movies.getPartnerRating(coupleId, movieId, partnerUid) : Promise.resolve(null),
         Movies.isInWatchlist(coupleId, movieId),
         Movies.isInFavorites(coupleId, movieId),
-        Movies.isWatched(coupleId, movieId)
+        Movies.isWatched(coupleId, movieId),
+        Movies.isWatching(coupleId, movieId),
       ]);
 
       setupStarInput(myStars);
       document.getElementById('btn-toggle-watchlist').classList.toggle('active', inWatchlist);
       document.getElementById('btn-toggle-favorite').classList.toggle('active', inFav);
+      _updateWatchingBtn(watching);
 
       // Exibir notas individuais e média
       _updateCoupleRatingsInfo(myStars, partnerStars);
@@ -580,6 +584,24 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
       finally { showLoading(false); }
     };
 
+    document.getElementById('btn-mark-watching').onclick = async () => {
+      if (!coupleId) { showToast('Conecte-se a um parceiro primeiro'); return; }
+      const currentlyWatching = document.getElementById('btn-mark-watching').dataset.watching === '1';
+      try {
+        showLoading(true);
+        if (currentlyWatching) {
+          await Movies.removeFromWatching(coupleId, movieId);
+          showToast('Removido de "Assistindo"');
+          _updateWatchingBtn(false);
+        } else {
+          await Movies.addToWatching(coupleId, movieId);
+          _updateWatchingBtn(true);
+          document.getElementById('btn-toggle-watchlist').classList.remove('active');
+        }
+      } catch(e) { showToast(e.message); }
+      finally { showLoading(false); }
+    };
+
     document.getElementById('btn-mark-watched').onclick = async () => {
       if (!coupleId) { showToast('Conecte-se a um parceiro primeiro'); return; }
       const currentlyWatched = document.getElementById('btn-mark-watched').dataset.watched === '1';
@@ -589,7 +611,6 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
           await Movies.removeFromWatched(coupleId, movieId);
           showToast('Removido dos assistidos');
           _updateWatchedBtn(false);
-          // Bloquear avaliação novamente
           const si = document.getElementById('stars-input');
           si.style.pointerEvents = 'none';
           si.style.opacity = '0.35';
@@ -599,7 +620,7 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
           await Movies.markWatched(coupleId, movieId);
           showToast('Marcado como assistido!');
           _updateWatchedBtn(true);
-          // Desbloquear avaliação
+          _updateWatchingBtn(false); // sai de "assistindo" ao concluir
           const si = document.getElementById('stars-input');
           si.style.pointerEvents = '';
           si.style.opacity = '';
@@ -653,6 +674,19 @@ function _updateWatchedBtn(watched) {
   } else {
     btn.className = 'btn btn-success';
     btn.innerHTML = '<i class="fa-solid fa-check"></i> Marcar como assistido';
+  }
+}
+
+function _updateWatchingBtn(watching) {
+  const btn = document.getElementById('btn-mark-watching');
+  if (!btn) return;
+  btn.dataset.watching = watching ? '1' : '0';
+  if (watching) {
+    btn.className = 'btn btn-watching active';
+    btn.innerHTML = '<i class="fa-solid fa-play-circle"></i> Assistindo agora';
+  } else {
+    btn.className = 'btn btn-watching';
+    btn.innerHTML = '<i class="fa-solid fa-play-circle"></i> Assistindo';
   }
 }
 
@@ -1303,6 +1337,43 @@ function openEditMovie(movie) {
 }
 
 // ── WATCHLIST ──────────────────────────────────
+// ── ASSISTINDO ─────────────────────────────────
+let _watchingRenderGen = 0;
+
+function initWatchingView() {
+  const coupleId  = AppState.coupleDoc?.id;
+  const container = document.getElementById('watching-container');
+  if (!coupleId) { container.innerHTML = '<p class="empty-text">Conecte-se a um parceiro primeiro</p>'; return; }
+
+  if (AppState._watchingUnsub) { AppState._watchingUnsub(); AppState._watchingUnsub = null; }
+
+  container.innerHTML = '<p class="empty-text">Carregando...</p>';
+
+  AppState._watchingUnsub = db.collection('watching')
+    .where('coupleId', '==', coupleId)
+    .onSnapshot(async snap => {
+      const gen = ++_watchingRenderGen;
+      const items = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.startedAt?.seconds || 0) - (a.startedAt?.seconds || 0));
+
+      if (!items.length) {
+        container.innerHTML = `<div class="feed-empty"><img src="refs/personagem.png" class="empty-mascot"/><p>Nada em andamento ainda</p><button class="btn btn-primary" data-nav="movies">Explorar filmes</button></div>`;
+        return;
+      }
+      container.innerHTML = '';
+      for (const item of items) {
+        const movie = await Movies.getMovie(item.movieId);
+        if (gen !== _watchingRenderGen) return;
+        if (!movie) continue;
+        container.appendChild(buildListMovieItem(movie, async () => {
+          await Movies.removeFromWatching(coupleId, item.movieId);
+          showToast('Removido de "Assistindo"');
+        }));
+      }
+    }, err => { console.error(err); container.innerHTML = '<p class="empty-text">Erro ao carregar</p>'; });
+}
+
+// ── WATCHLIST ──────────────────────────────────
 let _watchlistRenderGen = 0;
 
 function initWatchlistView() {
@@ -1501,6 +1572,7 @@ async function loadProfileTab(coupleId, tab, isOwn = true) {
   try {
     let items = [];
     if (tab === 'watched')   items = await Movies.getWatched(coupleId);
+    if (tab === 'watching')  items = await Movies.getWatching(coupleId);
     if (tab === 'favorites') items = await Movies.getFavorites(coupleId);
     if (tab === 'watchlist') items = await Movies.getWatchlist(coupleId);
 
