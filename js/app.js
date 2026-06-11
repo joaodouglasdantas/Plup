@@ -1566,8 +1566,28 @@ async function loadDiscoverCouples() {
   try {
     const couples = await Couple.listCouples(50);
     if (gen !== _discoverGen) return;
-    const myId    = AppState.coupleDoc?.id;
-    const sorted  = couples.sort((a, b) => (b.score || 0) - (a.score || 0));
+    const myId = AppState.coupleDoc?.id;
+
+    // Buscar nomes de todos os casais para permitir desempate alfabético
+    const userCache = {};
+    await Promise.all(
+      couples.flatMap(c => [c.user1, c.user2]).map(async uid => {
+        if (!userCache[uid]) userCache[uid] = await Auth.fetchUserDoc(uid);
+      })
+    );
+    if (gen !== _discoverGen) return;
+
+    function coupleName(c) {
+      const u1 = userCache[c.user1];
+      const u2 = userCache[c.user2];
+      return `${u1?.name || ''} & ${u2?.name || ''}`.toLowerCase();
+    }
+
+    const sorted = couples.sort((a, b) => {
+      const scoreDiff = (b.score || 0) - (a.score || 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return coupleName(a).localeCompare(coupleName(b), 'pt-BR');
+    });
 
     const top3 = sorted.slice(0, 3);
     const rest = sorted.slice(3);
@@ -1579,7 +1599,8 @@ async function loadDiscoverCouples() {
       const medals = ['🥇', '🥈', '🥉'];
       for (let i = 0; i < top3.length; i++) {
         const c = top3[i];
-        const [u1, u2] = await Promise.all([Auth.fetchUserDoc(c.user1), Auth.fetchUserDoc(c.user2)]);
+        const u1 = userCache[c.user1];
+        const u2 = userCache[c.user2];
         if (gen !== _discoverGen) return;
         const card = document.createElement('div');
         card.className = `podium-card podium-card-${i + 1}`;
@@ -1601,24 +1622,25 @@ async function loadDiscoverCouples() {
       podSect.classList.add('hidden');
     }
 
-    // Renderizar lista geral
+    // Renderizar lista geral (já ordenada, passamos o cache de users)
     regTitle.style.display = rest.length ? '' : 'none';
-    renderCouplesList(rest, list, gen);
+    renderCouplesList(rest, list, gen, userCache);
   } catch(e) {
     list.innerHTML = '<p class="empty-text">Erro ao carregar</p>';
   }
 }
 
-async function renderCouplesList(couples, container, gen = _discoverGen) {
+async function renderCouplesList(couples, container, gen = _discoverGen, userCache = {}) {
   if (!couples.length) {
     container.innerHTML = '';
     return;
   }
   container.innerHTML = '';
   for (const c of couples) {
+    // Usa cache se disponível, senão busca
     const [u1, u2] = await Promise.all([
-      Auth.fetchUserDoc(c.user1),
-      Auth.fetchUserDoc(c.user2)
+      userCache[c.user1] ? Promise.resolve(userCache[c.user1]) : Auth.fetchUserDoc(c.user1),
+      userCache[c.user2] ? Promise.resolve(userCache[c.user2]) : Auth.fetchUserDoc(c.user2),
     ]);
     if (gen !== _discoverGen) return;
     const el = document.createElement('div');
