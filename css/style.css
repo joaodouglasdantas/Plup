@@ -1229,7 +1229,7 @@ textarea { resize: vertical; }
   .movie-cover-overlay { display: none; }
   .movie-detail-body { flex: 1; overflow-y: auto; padding: 28px 24px; max-height: 100vh; }
 
-  /* ── Add movie: capa + form lado a lado ── */
+  /* ── Add movie: layout desktop ── */
   .add-movie-container {
     flex-direction: row;
     flex-wrap: wrap;
@@ -1239,7 +1239,12 @@ textarea { resize: vertical; }
     gap: 24px;
     align-items: flex-start;
   }
-  .cover-upload { width: 280px; flex-shrink: 0; aspect-ratio: 2/3; }
+  /* Tabs e busca TMDB ocupam toda a largura */
+  .add-movie-container .content-type-tabs,
+  .add-movie-container .tmdb-search-wrap { flex: 0 0 100%; }
+  /* Capa fica como coluna esquerda */
+  .cover-upload { width: 260px; flex-shrink: 0; aspect-ratio: 2/3; }
+  /* Form ocupa o resto */
   #form-add-movie { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 14px; }
 
   /* ── Perfil ── */

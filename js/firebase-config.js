@@ -31,7 +31,7 @@ const storage = firebase.storage();
 // ── TMDB API Key ──────────────────────────────────
 // Obtenha sua chave gratuita em https://www.themoviedb.org/settings/api
 // Substitua a string vazia pela sua chave para habilitar busca de filmes/séries/animes
-const TMDB_API_KEY = '';
+const TMDB_API_KEY = 'e2d2cc4614c8cdb60e14fe7f1ff90a43';
 
 // Admin UIDs (adicione o UID do admin após criar a conta)
 const ADMIN_UIDS = [
