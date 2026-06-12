@@ -843,15 +843,17 @@ let _resetAddMovieForm = null;
   // Drag (touch)
   preview.addEventListener('touchstart', e => {
     if (preview.classList.contains('hidden')) return;
+    e.preventDefault(); // bloqueia scroll ao iniciar arrasto na imagem
     _dragging = true;
     _didDrag  = false;
     const t = e.touches[0];
     _dragStart = { x: t.clientX, y: t.clientY };
     const p = _coverPos.split(' ');
     _posStart = { x: parseFloat(p[0]), y: parseFloat(p[1]) };
-  }, { passive: true });
-  document.addEventListener('touchmove', e => {
+  }, { passive: false });
+  preview.addEventListener('touchmove', e => {
     if (!_dragging) return;
+    e.preventDefault(); // bloqueia scroll enquanto arrasta
     const t = e.touches[0];
     const dx = Math.abs(t.clientX - _dragStart.x);
     const dy = Math.abs(t.clientY - _dragStart.y);
@@ -861,8 +863,8 @@ let _resetAddMovieForm = null;
     const ny = Math.max(0, Math.min(100, _posStart.y - (t.clientY - _dragStart.y) / rect.height * 100));
     _coverPos = `${nx.toFixed(1)}% ${ny.toFixed(1)}%`;
     preview.style.objectPosition = _coverPos;
-  });
-  document.addEventListener('touchend', () => { _dragging = false; });
+  }, { passive: false });
+  preview.addEventListener('touchend', () => { _dragging = false; });
 
   // Clique abre seletor — na área inteira, mas ignora se foi um arraste
   uploadArea.addEventListener('click', () => {
@@ -1915,7 +1917,7 @@ function initSettingsView() {
 
   function _applyAvatar(url, pos) {
     _avatarPos = pos || '50% 50%';
-    avatarEl.innerHTML = `<img src="${url}" alt="" style="object-fit:cover;width:100%;height:100%;object-position:${_avatarPos};cursor:grab" />`;
+    avatarEl.innerHTML = `<img src="${url}" alt="" style="object-fit:cover;width:100%;height:100%;object-position:${_avatarPos};cursor:grab;touch-action:none" />`;
     const hint = document.getElementById('avatar-reposition-hint');
     if (hint) hint.classList.remove('hidden');
     _setupAvatarDrag(avatarEl.querySelector('img'));
@@ -1938,6 +1940,7 @@ function initSettingsView() {
     function _onMouseUp() { if (_drag) { _drag = false; img.style.cursor = 'grab'; } }
     function _onTouchMove(e) {
       if (!_drag) return;
+      e.preventDefault(); // bloqueia scroll enquanto arrasta avatar
       const t = e.touches[0];
       const rect = avatarEl.getBoundingClientRect();
       const nx = Math.max(0, Math.min(100, _posStart.x - (t.clientX - _dragStart.x) / rect.width  * 100));
@@ -1958,20 +1961,21 @@ function initSettingsView() {
     document.addEventListener('mousemove', _onMouseMove);
     document.addEventListener('mouseup',   _onMouseUp);
     img.addEventListener('touchstart', e => {
+      e.preventDefault(); // bloqueia scroll ao iniciar arrasto no avatar
       _drag = true;
       const t = e.touches[0];
       _dragStart = { x: t.clientX, y: t.clientY };
       const p = _avatarPos.split(' ');
       _posStart = { x: parseFloat(p[0]), y: parseFloat(p[1]) };
-    }, { passive: true });
-    document.addEventListener('touchmove', _onTouchMove);
-    document.addEventListener('touchend',  _onTouchEnd);
+    }, { passive: false });
+    img.addEventListener('touchmove',  _onTouchMove, { passive: false });
+    img.addEventListener('touchend',   _onTouchEnd);
 
     avatarEl._dragCleanup = () => {
       document.removeEventListener('mousemove', _onMouseMove);
       document.removeEventListener('mouseup',   _onMouseUp);
-      document.removeEventListener('touchmove', _onTouchMove);
-      document.removeEventListener('touchend',  _onTouchEnd);
+      img.removeEventListener('touchmove', _onTouchMove);
+      img.removeEventListener('touchend',  _onTouchEnd);
     };
   }
 
