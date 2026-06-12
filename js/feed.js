@@ -102,7 +102,7 @@ const Feed = (() => {
         actionText = '<i class="fa-solid fa-check"></i> assistiu a um filme!';
         break;
       case 'rated':
-        actionText = `<i class="fa-solid fa-star"></i> média do casal: <strong>${event.stars}★</strong>`;
+        actionText = `<i class="fa-solid fa-star"></i> média do casal: <strong>${event.stars} <i class="fa-solid fa-star" style="font-size:.8em"></i></strong>`;
         starsHtml  = `<div class="feed-card-stars">${_renderStars(event.stars)}</div>`;
         break;
       case 'movie_added':
@@ -119,8 +119,8 @@ const Feed = (() => {
     card.innerHTML = `
       <div class="feed-card-header">
         <div class="feed-couple-avatars">
-          <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '👤'}</div>
-          <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '👤'}</div>
+          <div class="avatar">${u1?.avatarUrl ? `<img src="${u1.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
+          <div class="avatar">${u2?.avatarUrl ? `<img src="${u2.avatarUrl}" alt="">` : '<i class="fa-solid fa-user"></i>'}</div>
         </div>
         <div class="feed-card-couple">
           <div class="feed-card-couple-name">${names}</div>
@@ -149,7 +149,7 @@ const Feed = (() => {
   function _renderStars(val) {
     let h = '';
     for (let i = 1; i <= 5; i++) {
-      h += `<span class="${i <= val ? '' : 'empty'}">★</span>`;
+      h += `<i class="fa-${i <= val ? 'solid' : 'regular'} fa-star${i > val ? ' empty' : ''}"></i>`;
     }
     return h;
   }

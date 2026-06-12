@@ -131,7 +131,7 @@ const Movies = (() => {
       });
       await _notifyFollowers(userDoc.coupleId, {
         type: 'new_movie',
-        message: `${userDoc.name} adicionou o filme "${data.title.trim()}" 🎬`,
+        message: `${userDoc.name} adicionou o filme "${data.title.trim()}"`,
         movieId: docRef.id
       });
     }
@@ -290,7 +290,7 @@ const Movies = (() => {
     const name2 = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
     await _notifyPartner(coupleId, uid2, {
       type: 'partner_watched',
-      message: `${name2} marcou "${movieDoc?.title || 'um filme'}" como assistido 🎬`,
+      message: `${name2} marcou "${movieDoc?.title || 'um filme'}" como assistido`,
       movieId
     });
   }
@@ -315,7 +315,7 @@ const Movies = (() => {
   async function addToWatching(coupleId, movieId) {
     const id = `${coupleId}_${movieId}`;
     const exists = (await db.collection('watching').doc(id).get()).exists;
-    if (exists) { showToast('Já está em "Assistindo" 👀'); return; }
+    if (exists) { showToast('Já está em "Assistindo"'); return; }
 
     await db.collection('watching').doc(id).set({
       coupleId, movieId,
@@ -324,7 +324,7 @@ const Movies = (() => {
 
     // Remover da watchlist se estiver lá
     await db.collection('watchlist').doc(id).delete();
-    showToast('Marcado como Assistindo 👀');
+    showToast('Marcado como Assistindo');
 
     // Notificar parceiro
     const uid = Auth.getCurrentUser().uid;
@@ -332,7 +332,7 @@ const Movies = (() => {
     const movieDoc = await getMovie(movieId);
     await _notifyPartner(coupleId, uid, {
       type: 'partner_watching',
-      message: `${name} começou a assistir "${movieDoc?.title || 'um conteúdo'}" 👀`,
+      message: `${name} começou a assistir "${movieDoc?.title || 'um conteúdo'}"`,
       movieId
     });
   }
@@ -356,12 +356,12 @@ const Movies = (() => {
   async function addToWatchlist(coupleId, movieId) {
     const id = `${coupleId}_${movieId}`;
     const exists = (await db.collection('watchlist').doc(id).get()).exists;
-    if (exists) { showToast('Já está na lista de "Ver depois" 📋'); return; }
+    if (exists) { showToast('Já está na lista "Ver depois"'); return; }
     await db.collection('watchlist').doc(id).set({
       coupleId, movieId,
       addedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    showToast('Adicionado à lista "Ver depois" 📋');
+    showToast('Adicionado à lista "Ver depois"');
   }
 
   async function removeFromWatchlist(coupleId, movieId) {
@@ -394,13 +394,13 @@ const Movies = (() => {
       addedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     await Couple.recalcScore(coupleId);
-    showToast('Adicionado aos favoritos ⭐');
+    showToast('Adicionado aos favoritos');
     const uidFav = Auth.getCurrentUser().uid;
     const nameFav = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
     const movieFav = await getMovie(movieId);
     await _notifyPartner(coupleId, uidFav, {
       type: 'partner_favorited',
-      message: `${nameFav} adicionou "${movieFav?.title || 'um filme'}" aos favoritos ⭐`,
+      message: `${nameFav} adicionou "${movieFav?.title || 'um filme'}" aos favoritos`,
       movieId
     });
     return true;
@@ -430,7 +430,7 @@ const Movies = (() => {
     await db.collection('movies').doc(movieId).update({
       reportCount: firebase.firestore.FieldValue.increment(1)
     });
-    showToast('Denúncia enviada. Obrigado! 🙏');
+    showToast('Denúncia enviada. Obrigado!');
   }
 
   // ── Feed event (interno) ──────────────────

@@ -575,7 +575,7 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
       try {
         showLoading(true);
         await Movies.rateMovie(coupleId, movieId, selected);
-        showToast(`Avaliado com ${selected} ⭐`);
+        showToast(`Avaliado com ${selected} estrelas`);
         document.getElementById('rating-display').textContent = `Sua nota: ${selected} de 5`;
         // Atualizar info do casal com nova nota
         const partnerStars2 = partnerUid ? await Movies.getPartnerRating(coupleId, movieId, partnerUid) : null;
@@ -694,10 +694,11 @@ function _updateCoupleRatingsInfo(myStars, partnerStars) {
   const el = document.getElementById('couple-ratings-info');
   if (!el) return;
   if (!myStars && partnerStars === null) { el.textContent = ''; return; }
-  const myText      = myStars      ? `Você: ${myStars}★` : 'Você: ainda não avaliou';
-  const partnerText = partnerStars !== null ? `Parceiro(a): ${partnerStars}★` : 'Parceiro(a): ainda não avaliou';
+  const star = '<i class="fa-solid fa-star" style="font-size:.8em;margin-left:2px"></i>';
+  const myText      = myStars      ? `Você: ${myStars}${star}` : 'Você: ainda não avaliou';
+  const partnerText = partnerStars !== null ? `Parceiro(a): ${partnerStars}${star}` : 'Parceiro(a): ainda não avaliou';
   const avg = (myStars && partnerStars !== null)
-    ? `Média do casal: ${((myStars + partnerStars) / 2).toFixed(1)}★`
+    ? `Média do casal: ${((myStars + partnerStars) / 2).toFixed(1)}${star}`
     : '';
   el.innerHTML = [myText, partnerText, avg].filter(Boolean).join(' &nbsp;|&nbsp; ');
 }
@@ -730,8 +731,8 @@ function setupStarInput(currentVal) {
     left.className  = 'star-half-l';
     right.className = 'star-half-r';
 
-    const hoverLeft  = () => { renderStars(n - 0.5); display.textContent = `${n - 0.5} de 5 ⭐`; };
-    const hoverRight = () => { renderStars(n);       display.textContent = `${n} de 5 ⭐`; };
+    const hoverLeft  = () => { renderStars(n - 0.5); display.textContent = `${n - 0.5} de 5`; };
+    const hoverRight = () => { renderStars(n);       display.textContent = `${n} de 5`; };
 
     left.addEventListener('mouseenter',  hoverLeft);
     right.addEventListener('mouseenter', hoverRight);
@@ -740,13 +741,13 @@ function setupStarInput(currentVal) {
       selectedVal = n - 0.5;
       container.dataset.selectedRating = selectedVal;
       renderStars(selectedVal);
-      display.textContent = `${selectedVal} de 5 ⭐ selecionado`;
+      display.textContent = `${selectedVal} de 5 selecionado`;
     });
     right.addEventListener('click', () => {
       selectedVal = n;
       container.dataset.selectedRating = selectedVal;
       renderStars(selectedVal);
-      display.textContent = `${selectedVal} de 5 ⭐ selecionado`;
+      display.textContent = `${selectedVal} de 5 selecionado`;
     });
 
     wrapper.appendChild(icon);
@@ -1018,7 +1019,7 @@ let _resetAddMovieForm = null;
               <div class="tmdb-result-meta">
                 <span class="tmdb-type-badge ${typeCls}">${typeLbl}</span>
                 ${r.year ? `<span>${r.year}</span>` : ''}
-                ${r.voteAverage ? `<span>⭐ ${r.voteAverage.toFixed(1)}</span>` : ''}
+                ${r.voteAverage ? `<span><i class="fa-solid fa-star" style="color:var(--warning);font-size:.7rem"></i> ${r.voteAverage.toFixed(1)}</span>` : ''}
               </div>
             </div>
           </div>`;
@@ -1101,7 +1102,7 @@ let _resetAddMovieForm = null;
       clearTimeout(tmdbSelected._hideTimeout);
       tmdbSelected._hideTimeout = setTimeout(() => tmdbSelected.classList.add('hidden'), 4000);
 
-      showToast(`"${data.title}" carregado do TMDB ✅`);
+      showToast(`"${data.title}" carregado do TMDB`);
     } catch(err) {
       console.error('TMDB detail error:', err);
       showToast('Erro ao carregar detalhes do TMDB');
@@ -1307,7 +1308,7 @@ let _resetAddMovieForm = null;
       showLoading(true);
       if (AppState.editingMovieId) {
         await Movies.updateMovie(AppState.editingMovieId, data, _coverFile || null, _coverUrlFromTmdb);
-        showToast('Atualizado! ✅');
+        showToast('Atualizado!');
         const editedId = AppState.editingMovieId;
         AppState.editingMovieId = null;
         _resetAddMovieForm();
@@ -1317,7 +1318,7 @@ let _resetAddMovieForm = null;
       } else {
         await Movies.addMovie(data, _coverFile, _coverUrlFromTmdb);
         const typeLabel = { movie: 'Filme', series: 'Série', anime: 'Anime' }[_contentType] || 'Conteúdo';
-        showToast(`${typeLabel} publicado! 🎬`);
+        showToast(`${typeLabel} publicado!`);
         _resetAddMovieForm();
         navigateTo('movies');
       }
@@ -1668,7 +1669,11 @@ async function loadDiscoverCouples() {
     if (top3.length >= 1) {
       podSect.classList.remove('hidden');
       podium.innerHTML = '';
-      const medals = ['🥇', '🥈', '🥉'];
+      const medals = [
+        '<i class="fa-solid fa-medal" style="color:#FFD700"></i>',
+        '<i class="fa-solid fa-medal" style="color:#B0BEC5"></i>',
+        '<i class="fa-solid fa-medal" style="color:#BCAAA4"></i>',
+      ];
       for (let i = 0; i < top3.length; i++) {
         const c = top3[i];
         const u1 = userCache[c.user1];

@@ -8,7 +8,7 @@ const Admin = (() => {
   // ── Render painel completo ─────────────────
   function initAdmin() {
     if (!Auth.isAdmin()) {
-      showToast('Acesso restrito 🔒');
+      showToast('Acesso restrito');
       navigateTo('feed');
       return;
     }
@@ -43,8 +43,8 @@ const Admin = (() => {
           <div class="admin-item" id="cat-item-${c.id}">
             ${badge}
             <span class="admin-item-name">${c.name}</span>
-            <button class="admin-item-edit" onclick="Admin.editCategory('${c.id}','${c.name.replace(/'/g,"\\'")}','${c.color || ''}')">✏️</button>
-            <button class="admin-item-delete" data-id="${c.id}" onclick="Admin.deleteCategory('${c.id}')">🗑️</button>
+            <button class="admin-item-edit" onclick="Admin.editCategory('${c.id}','${c.name.replace(/'/g,"\\'")}','${c.color || ''}')"><i class="fa-solid fa-pen"></i></button>
+            <button class="admin-item-delete" data-id="${c.id}" onclick="Admin.deleteCategory('${c.id}')"><i class="fa-solid fa-trash"></i></button>
           </div>
         `;
       }).join('');
@@ -58,7 +58,7 @@ const Admin = (() => {
         await Movies.addCategory(name, color);
         document.getElementById('new-category-name').value = '';
         document.getElementById('new-category-icon').value = '';
-        showToast('Categoria adicionada! ✅');
+        showToast('Categoria adicionada!');
       } catch(e) { showToast(e.message); }
     };
   }
@@ -78,8 +78,8 @@ const Admin = (() => {
         <div class="admin-item" id="age-item-${a.id}">
           <span class="badge-age" style="background:${a.color || '#FFB703'};color:#fff">${a.label}</span>
           <span class="admin-item-name">${a.label}</span>
-          <button class="admin-item-edit" onclick="Admin.editAgeRating('${a.id}','${a.label.replace(/'/g,"\\'")}','${a.color || ''}')">✏️</button>
-          <button class="admin-item-delete" onclick="Admin.deleteAgeRating('${a.id}')">🗑️</button>
+          <button class="admin-item-edit" onclick="Admin.editAgeRating('${a.id}','${a.label.replace(/'/g,"\\'")}','${a.color || ''}')"><i class="fa-solid fa-pen"></i></button>
+          <button class="admin-item-delete" onclick="Admin.deleteAgeRating('${a.id}')"><i class="fa-solid fa-trash"></i></button>
         </div>
       `).join('');
     });
@@ -91,7 +91,7 @@ const Admin = (() => {
       try {
         await Movies.addAgeRating(label, color);
         document.getElementById('new-age-label').value = '';
-        showToast('Classificação adicionada! ✅');
+        showToast('Classificação adicionada!');
       } catch(e) { showToast(e.message); }
     };
   }
@@ -117,7 +117,7 @@ const Admin = (() => {
     const color = document.getElementById(`edit-cat-color-${id}`).value;
     if (!name) { showToast('Digite o nome'); return; }
     await Movies.updateCategory(id, name, color);
-    showToast('Categoria atualizada ✅');
+    showToast('Categoria atualizada');
   }
 
   function editAgeRating(id, label, color) {
@@ -135,7 +135,7 @@ const Admin = (() => {
     const color = document.getElementById(`edit-age-color-${id}`).value;
     if (!label) { showToast('Digite o rótulo'); return; }
     await Movies.updateAgeRating(id, label, color);
-    showToast('Classificação atualizada ✅');
+    showToast('Classificação atualizada');
   }
 
   function cancelEdit(itemId) {
@@ -151,7 +151,7 @@ const Admin = (() => {
       .onSnapshot(async snap => {
         const list = document.getElementById('reports-list');
         if (snap.empty) {
-          list.innerHTML = '<p class="empty-text">Nenhuma denúncia pendente 🎉</p>';
+          list.innerHTML = '<p class="empty-text">Nenhuma denúncia pendente</p>';
           return;
         }
         list.innerHTML = '';
@@ -203,15 +203,15 @@ const Admin = (() => {
           const m = { id: doc.id, ...doc.data() };
           return `
             <div class="admin-item">
-              ${m.coverUrl ? `<img src="${m.coverUrl}" style="width:36px;height:50px;object-fit:cover;border-radius:6px;" />` : '🎬'}
+              ${m.coverUrl ? `<img src="${m.coverUrl}" style="width:36px;height:50px;object-fit:cover;border-radius:6px;" />` : '<i class="fa-solid fa-film" style="font-size:1.4rem;color:var(--gray-5)"></i>'}
               <span class="admin-item-name">${m.title}</span>
               <span style="font-size:.7rem;padding:3px 8px;background:${m.approved?'var(--cyan-l)':'#FFE4E1'};border-radius:100px;color:var(--navy)">
                 ${m.approved ? 'ativo' : 'oculto'}
               </span>
               <button class="admin-item-delete" onclick="Admin.toggleMovie('${m.id}',${m.approved})">
-                ${m.approved ? '🚫' : '✅'}
+                ${m.approved ? '<i class="fa-solid fa-ban"></i>' : '<i class="fa-solid fa-check"></i>'}
               </button>
-              <button class="admin-item-delete" onclick="Admin.removeMovie('${m.id}')">🗑️</button>
+              <button class="admin-item-delete" onclick="Admin.removeMovie('${m.id}')"><i class="fa-solid fa-trash"></i></button>
             </div>
           `;
         }).join('');
@@ -220,7 +220,7 @@ const Admin = (() => {
 
   async function toggleMovie(movieId, current) {
     await Movies.setApproved(movieId, !current);
-    showToast(!current ? 'Filme reativado ✅' : 'Filme ocultado 🚫');
+    showToast(!current ? 'Filme reativado' : 'Filme ocultado');
   }
 
   async function removeMovie(movieId) {
@@ -245,7 +245,7 @@ const Admin = (() => {
         maxScore:    parseInt(document.getElementById('cfg-max-score').value)    || 100
       };
       await db.collection('config').doc('score').set(newCfg);
-      showToast('Configuração de score salva! ✅');
+      showToast('Configuração de score salva!');
     };
 
     document.getElementById('btn-clear-old-feed').onclick = async () => {
@@ -265,7 +265,7 @@ const Admin = (() => {
           chunk.forEach(doc => batch.delete(doc.ref));
           await batch.commit();
         }
-        showToast(`${snap.size} post(s) removido(s) ✅`);
+        showToast(`${snap.size} post(s) removido(s)`);
       } catch(e) { showToast('Erro: ' + e.message); }
       finally { showLoading(false); }
     };
@@ -285,7 +285,7 @@ const Admin = (() => {
           chunk.forEach(doc => batch.delete(doc.ref));
           await batch.commit();
         }
-        showToast(`${snap.size} evento(s) removido(s) ✅`);
+        showToast(`${snap.size} evento(s) removido(s)`);
       } catch(e) { showToast('Erro: ' + e.message); }
       finally { showLoading(false); }
     };
