@@ -743,6 +743,16 @@ textarea { resize: vertical; }
   padding: 4px 12px; border-radius: 100px; font-size: 0.72rem; font-weight: 700;
   pointer-events: none; white-space: nowrap; z-index: 2;
 }
+.btn-remove-cover {
+  position: absolute; top: 8px; right: 8px; z-index: 3;
+  width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(0,0,0,0.6); border: none; color: #fff;
+  cursor: pointer; font-size: 0.9rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.btn-remove-cover:hover { background: rgba(220,50,50,0.85); }
+.btn-remove-cover.hidden { display: none; }
 
 /* ════════════════════════════════════════════════
    LISTAS

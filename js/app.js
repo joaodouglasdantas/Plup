@@ -778,6 +778,7 @@ let _resetAddMovieForm = null;
   const placeholder = document.getElementById('cover-placeholder');
   const preview     = document.getElementById('cover-preview');
   const hint        = document.getElementById('cover-reposition-hint');
+  const removeCoverBtn = document.getElementById('btn-remove-cover');
   const titleH2     = document.getElementById('add-movie-title');
   const submitBtn   = document.getElementById('add-movie-submit');
   let _coverFile    = null;
@@ -792,6 +793,7 @@ let _resetAddMovieForm = null;
   let _contentType  = 'movie'; // 'movie' | 'series' | 'anime'
   let _tmdbData     = null;    // objeto normalizado do TMDB selecionado
   let _seasons      = [];      // [{number, name, episodes}]
+  let _hasCover     = false;   // controla se há capa carregada
 
   // ── Capa ───────────────────────────────────
   function _showCover(src, pos) {
@@ -802,6 +804,8 @@ let _resetAddMovieForm = null;
     preview.classList.add('draggable');
     placeholder.style.display = 'none';
     hint.classList.remove('hidden');
+    removeCoverBtn.classList.remove('hidden');
+    _hasCover = true;
   }
 
   function _hideCover() {
@@ -810,9 +814,19 @@ let _resetAddMovieForm = null;
     preview.classList.remove('draggable', 'dragging');
     placeholder.style.display = '';
     hint.classList.add('hidden');
+    removeCoverBtn.classList.add('hidden');
     _coverPos = '50% 50%';
     _coverUrlFromTmdb = null;
+    _coverFile = null;
+    fileInput.value = '';
+    _hasCover = false;
   }
+
+  // Botão de remover capa
+  removeCoverBtn.addEventListener('click', e => {
+    e.stopPropagation(); // não aciona o fileInput.click() do uploadArea
+    _hideCover();
+  });
 
   // Drag para reposicionar (mouse)
   preview.addEventListener('mousedown', e => {
@@ -1272,23 +1286,36 @@ let _resetAddMovieForm = null;
     e.preventDefault();
     if (!AppState.user) { showToast('Faça login primeiro'); return; }
 
+    // ── Validação ──────────────────────────
+    const titleVal = document.getElementById('movie-title').value.trim();
+    const descVal  = document.getElementById('movie-desc-input').value.trim();
+    const ageVal   = document.getElementById('movie-age').value;
+
+    if (!titleVal)  { showToast('Preencha o título'); document.getElementById('movie-title').focus(); return; }
+    if (!descVal)   { showToast('Preencha a descrição'); document.getElementById('movie-desc-input').focus(); return; }
+    if (!_hasCover) { showToast('Adicione uma imagem de capa'); return; }
+
     const categoryIds = [...document.getElementById('movie-category-chips').querySelectorAll('.chip-opt.active')]
       .map(el => el.dataset.id);
     if (!categoryIds.length) { showToast('Selecione ao menos uma categoria'); return; }
+    if (!ageVal) { showToast('Selecione a classificação etária'); return; }
 
     // Coletar dados extras de série / anime
     let seasons = null, totalSeasons = null, animeFormat = null, totalEpisodes = null;
     if (_contentType === 'series') {
       seasons = _collectSeasons('seasons-detail-list');
       totalSeasons = seasons?.length || parseInt(document.getElementById('series-seasons-count').value, 10) || null;
+      if (!totalSeasons) { showToast('Informe o número de temporadas'); return; }
     } else if (_contentType === 'anime') {
       const fmt = document.querySelector('input[name="anime-format"]:checked')?.value || 'sequential';
       animeFormat = fmt;
       if (fmt === 'sequential') {
         totalEpisodes = parseInt(document.getElementById('anime-total-eps').value, 10) || null;
+        if (!totalEpisodes) { showToast('Informe o número de episódios'); return; }
       } else {
         seasons = _collectSeasons('anime-seasons-detail-list');
         totalSeasons = seasons?.length || parseInt(document.getElementById('anime-seasons-count').value, 10) || null;
+        if (!totalSeasons) { showToast('Informe o número de temporadas'); return; }
       }
     }
 
