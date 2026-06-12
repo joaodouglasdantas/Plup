@@ -104,48 +104,50 @@ textarea { resize: vertical; }
 ════════════════════════════════════════════════ */
 .spotlight {
   position: absolute;
-  bottom: 0;
-  height: 100%;
+  bottom: -5%;          /* âncora ligeiramente abaixo da tela */
+  height: 110%;         /* ultrapassa o topo para o feixe não cortar */
   pointer-events: none;
+  transform-origin: bottom center;  /* rotação pivota na base do feixe */
+  clip-path: polygon(30% 100%, 70% 100%, 100% 0%, 0% 0%);
 }
 .spotlight1 {
-  left: 4%;
-  width: 28%;
+  left: 2%;
+  width: 34%;
   background: linear-gradient(to top,
     rgba(0,180,216,0.55) 0%,
-    rgba(0,180,216,0.18) 55%,
+    rgba(0,180,216,0.18) 60%,
     transparent 100%);
-  clip-path: polygon(22% 100%, 78% 100%, 100% 0%, 0% 0%);
-  animation: spotSway1 9s ease-in-out infinite;
+  animation: spotSweep1 8s ease-in-out infinite;
 }
 .spotlight2 {
   left: 50%;
-  transform: translateX(-50%);
-  width: 22%;
-  background: linear-gradient(to top,
-    rgba(100,220,255,0.45) 0%,
-    rgba(100,220,255,0.12) 55%,
-    transparent 100%);
-  clip-path: polygon(20% 100%, 80% 100%, 100% 0%, 0% 0%);
-  animation: spotSway2 12s ease-in-out infinite;
-}
-.spotlight3 {
-  right: 4%;
   width: 28%;
   background: linear-gradient(to top,
-    rgba(0,180,216,0.55) 0%,
-    rgba(0,180,216,0.18) 55%,
+    rgba(100,220,255,0.45) 0%,
+    rgba(100,220,255,0.12) 60%,
     transparent 100%);
-  clip-path: polygon(22% 100%, 78% 100%, 100% 0%, 0% 0%);
-  animation: spotSway1 10s 2s ease-in-out infinite alternate;
+  animation: spotSweep2 11s ease-in-out infinite;
 }
-@keyframes spotSway1 {
-  0%, 100% { clip-path: polygon(18% 100%, 78% 100%, 88% 0%, 8%  0%); }
-  50%       { clip-path: polygon(26% 100%, 84% 100%, 96% 0%, 16% 0%); }
+.spotlight3 {
+  right: 2%;
+  width: 34%;
+  background: linear-gradient(to top,
+    rgba(0,180,216,0.55) 0%,
+    rgba(0,180,216,0.18) 60%,
+    transparent 100%);
+  animation: spotSweep3 9s ease-in-out infinite;
 }
-@keyframes spotSway2 {
-  0%, 100% { clip-path: polygon(18% 100%, 82% 100%, 94% 0%, 6%  0%); }
-  50%       { clip-path: polygon(22% 100%, 78% 100%, 90% 0%, 10% 0%); }
+@keyframes spotSweep1 {
+  0%, 100% { transform: rotate(-14deg); }
+  50%       { transform: rotate(6deg);  }
+}
+@keyframes spotSweep2 {
+  0%, 100% { transform: translateX(-50%) rotate(6deg);  }
+  50%       { transform: translateX(-50%) rotate(-6deg); }
+}
+@keyframes spotSweep3 {
+  0%, 100% { transform: rotate(14deg);  }
+  50%       { transform: rotate(-6deg); }
 }
 
 /* ════════════════════════════════════════════════
