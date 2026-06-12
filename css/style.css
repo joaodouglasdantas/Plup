@@ -1547,6 +1547,23 @@ textarea { resize: vertical; }
   color: var(--gray-5);
 }
 
+/* Aviso de duplicata */
+.duplicate-warning {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; margin-top: 8px;
+  background: #FFF3CD; border: 1.5px solid #FFCA28;
+  border-radius: var(--radius); font-size: .82rem;
+}
+.duplicate-warning i { color: #F59E0B; flex-shrink: 0; }
+.duplicate-warning span { flex: 1; font-weight: 600; color: #7C5200; }
+.duplicate-warning button {
+  flex-shrink: 0; padding: 4px 10px;
+  background: #F59E0B; color: #fff; border: none;
+  border-radius: 100px; font-size: .75rem; font-weight: 700;
+  cursor: pointer; white-space: nowrap;
+}
+.duplicate-warning button:hover { background: #D97706; }
+
 /* Selected badge */
 .tmdb-selected-badge {
   display: flex;

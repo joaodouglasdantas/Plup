@@ -1185,6 +1185,13 @@ let _resetAddMovieForm = null;
       clearTimeout(tmdbSelected._hideTimeout);
       tmdbSelected._hideTimeout = setTimeout(() => tmdbSelected.classList.add('hidden'), 4000);
 
+      // Verificar duplicata imediatamente
+      const excludeId = AppState.editingMovieId || null;
+      Movies.checkDuplicate(data.tmdbId, data.title, excludeId).then(dup => {
+        if (dup) _showDuplicateWarning(dup);
+        else _hideDuplicateWarning();
+      });
+
       showToast(`"${data.title}" carregado do TMDB`);
     } catch(err) {
       console.error('TMDB detail error:', err);
@@ -1194,11 +1201,34 @@ let _resetAddMovieForm = null;
     }
   }
 
+  // ── Aviso de duplicata ───────────────────
+  const dupWarning  = document.getElementById('duplicate-warning');
+  const dupText     = document.getElementById('duplicate-warning-text');
+  let   _dupMovieId = null;
+
+  function _showDuplicateWarning(movie) {
+    _dupMovieId = movie.id;
+    dupText.textContent = `"${movie.title}" já existe no catálogo.`;
+    dupWarning.classList.remove('hidden');
+  }
+  function _hideDuplicateWarning() {
+    _dupMovieId = null;
+    dupWarning.classList.add('hidden');
+  }
+
+  document.getElementById('btn-duplicate-view').addEventListener('click', () => {
+    if (_dupMovieId) {
+      navigateTo(AppState.prevView || 'movies');
+      openMovieDetail(_dupMovieId, true);
+    }
+  });
+
   document.getElementById('tmdb-clear-selection').addEventListener('click', () => {
     _tmdbData = null;
     _seasons  = [];
     tmdbSelected.classList.add('hidden');
     tmdbHint.classList.remove('hidden');
+    _hideDuplicateWarning();
     // Não limpa os campos preenchidos para o usuário poder editar
   });
 
@@ -1254,6 +1284,7 @@ let _resetAddMovieForm = null;
     tmdbHint.classList.remove('hidden');
     tmdbInput.value = '';
     tmdbResults.classList.add('hidden');
+    _hideDuplicateWarning();
     // Reset anime format
     const seqRadio = document.querySelector('input[name="anime-format"][value="sequential"]');
     if (seqRadio) { seqRadio.checked = true; }
@@ -1402,6 +1433,18 @@ let _resetAddMovieForm = null;
 
     try {
       showLoading(true);
+
+      // Verificar duplicata antes de salvar (apenas no modo de adição)
+      if (!AppState.editingMovieId) {
+        const dup = await Movies.checkDuplicate(_tmdbData?.tmdbId || null, data.title);
+        if (dup) {
+          showLoading(false);
+          _showDuplicateWarning(dup);
+          if (!confirm(`"${dup.title}" já existe no catálogo.\n\nDeseja adicionar mesmo assim?`)) return;
+          showLoading(true);
+        }
+      }
+
       if (AppState.editingMovieId) {
         await Movies.updateMovie(AppState.editingMovieId, data, _coverFile || null, _coverUrlFromTmdb);
         showToast('Atualizado!');

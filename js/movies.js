@@ -499,6 +499,29 @@ const Movies = (() => {
     }
   }
 
+  // ── Verificar duplicata ───────────────────
+  async function checkDuplicate(tmdbId, title, excludeId = null) {
+    // Por TMDB ID (mais confiável)
+    if (tmdbId) {
+      const snap = await db.collection('movies')
+        .where('tmdbId', '==', tmdbId)
+        .where('approved', '==', true)
+        .limit(2).get();
+      const found = snap.docs.find(d => d.id !== excludeId);
+      if (found) return { id: found.id, ...found.data() };
+    }
+    // Por título exato (fallback para cadastro manual)
+    if (title) {
+      const snap = await db.collection('movies')
+        .where('title', '==', title.trim())
+        .where('approved', '==', true)
+        .limit(2).get();
+      const found = snap.docs.find(d => d.id !== excludeId);
+      if (found) return { id: found.id, ...found.data() };
+    }
+    return null;
+  }
+
   // ── Admin: aprovar/reprovar ───────────────
   async function setApproved(movieId, approved) {
     await db.collection('movies').doc(movieId).update({ approved });
@@ -507,7 +530,7 @@ const Movies = (() => {
   return {
     onCategories, addCategory, deleteCategory, updateCategory,
     onAgeRatings, addAgeRating, deleteAgeRating, updateAgeRating,
-    addMovie, updateMovie, onMovies, searchMovies, getMovie,
+    addMovie, updateMovie, onMovies, searchMovies, getMovie, checkDuplicate,
     rateMovie, getRating, getPartnerRating,
     markWatched, removeFromWatched, isWatched, getWatched,
     addToWatching, removeFromWatching, isWatching, getWatching,
