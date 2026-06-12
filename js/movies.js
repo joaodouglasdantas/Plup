@@ -127,6 +127,7 @@ const Movies = (() => {
       await _addFeedEvent(userDoc.coupleId, 'movie_added', {
         movieId: docRef.id,
         movieTitle: data.title.trim(),
+        movieType: data.type || 'movie',
         coverUrl
       });
       await _notifyFollowers(userDoc.coupleId, {
@@ -284,6 +285,7 @@ const Movies = (() => {
     await _addFeedEvent(coupleId, 'watched', {
       movieId,
       movieTitle: movieDoc?.title || '',
+      movieType: movieDoc?.type || 'movie',
       coverUrl: movieDoc?.coverUrl || ''
     });
     const uid2 = Auth.getCurrentUser().uid;
