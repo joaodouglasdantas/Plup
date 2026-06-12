@@ -328,10 +328,19 @@ const Movies = (() => {
     await db.collection('watchlist').doc(id).delete();
     showToast('Marcado como Assistindo');
 
-    // Notificar parceiro
     const uid = Auth.getCurrentUser().uid;
     const name = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
     const movieDoc = await getMovie(movieId);
+
+    // Feed event
+    await _addFeedEvent(coupleId, 'watching', {
+      movieId,
+      movieTitle: movieDoc?.title || '',
+      movieType: movieDoc?.type || 'movie',
+      coverUrl: movieDoc?.coverUrl || ''
+    });
+
+    // Notificar parceiro
     await _notifyPartner(coupleId, uid, {
       type: 'partner_watching',
       message: `${name} começou a assistir "${movieDoc?.title || 'um conteúdo'}"`,
@@ -400,6 +409,15 @@ const Movies = (() => {
     const uidFav = Auth.getCurrentUser().uid;
     const nameFav = Auth.getUserDoc()?.name || 'Seu parceiro(a)';
     const movieFav = await getMovie(movieId);
+
+    // Feed event
+    await _addFeedEvent(coupleId, 'favorited', {
+      movieId,
+      movieTitle: movieFav?.title || '',
+      movieType: movieFav?.type || 'movie',
+      coverUrl: movieFav?.coverUrl || ''
+    });
+
     await _notifyPartner(coupleId, uidFav, {
       type: 'partner_favorited',
       message: `${nameFav} adicionou "${movieFav?.title || 'um filme'}" aos favoritos`,

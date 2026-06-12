@@ -99,17 +99,24 @@ const Feed = (() => {
 
     const typeLabel = { movie: 'filme', series: 'série', anime: 'anime' }[event.movieType] || 'filme';
     const typeIcon  = { movie: 'fa-film', series: 'fa-tv', anime: 'fa-star' }[event.movieType] || 'fa-film';
+    const artigo    = typeLabel === 'série' ? 'uma série' : typeLabel === 'anime' ? 'um anime' : 'um filme';
 
     switch (event.type) {
+      case 'watching':
+        actionText = `<i class="fa-solid fa-play"></i> está assistindo ${artigo}!`;
+        break;
       case 'watched':
-        actionText = `<i class="fa-solid fa-check"></i> assistiu a ${typeLabel === 'anime' ? 'um anime' : typeLabel === 'série' ? 'uma série' : 'um filme'}!`;
+        actionText = `<i class="fa-solid fa-check"></i> terminou de assistir ${artigo}!`;
+        break;
+      case 'favorited':
+        actionText = `<i class="fa-solid fa-heart"></i> adicionou ${artigo} aos favoritos!`;
         break;
       case 'rated':
         actionText = `<i class="fa-solid fa-star"></i> média do casal: <strong>${event.stars} <i class="fa-solid fa-star" style="font-size:.8em"></i></strong>`;
         starsHtml  = `<div class="feed-card-stars">${_renderStars(event.stars)}</div>`;
         break;
       case 'movie_added':
-        actionText = `<i class="fa-solid ${typeIcon}"></i> adicionou ${typeLabel === 'anime' ? 'um anime' : typeLabel === 'série' ? 'uma série' : 'um filme'} à plataforma!`;
+        actionText = `<i class="fa-solid ${typeIcon}"></i> adicionou ${artigo} à plataforma!`;
         break;
       default:
         actionText = '<i class="fa-solid fa-circle-dot"></i> nova atividade';
