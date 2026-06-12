@@ -18,6 +18,7 @@ const Admin = (() => {
     loadReports();
     loadAllMovies();
     loadScoreConfig();
+    setupMaintenanceButtons();
   }
 
   // ── Tabs ──────────────────────────────────
@@ -229,6 +230,31 @@ const Admin = (() => {
     showToast('Filme deletado');
   }
 
+  // ── Manutenção ────────────────────────────
+  function setupMaintenanceButtons() {
+    const nukeBtn = document.getElementById('btn-nuke-feed');
+    if (!nukeBtn) return;
+    nukeBtn.addEventListener('click', async () => {
+      if (!confirm('Isso vai apagar TODOS os posts do feed de todos os casais.\n\nTem certeza absoluta?')) return;
+      if (!confirm('Última chance. Esta ação é irreversível.')) return;
+      showLoading(true);
+      try {
+        let total = 0;
+        let snap = await db.collection('feed').limit(500).get();
+        while (!snap.empty) {
+          const batch = db.batch();
+          snap.docs.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+          total += snap.size;
+          if (snap.size < 500) break;
+          snap = await db.collection('feed').limit(500).get();
+        }
+        showToast(`Feed limpo. ${total} post(s) removido(s).`);
+      } catch(e) { showToast('Erro: ' + e.message); }
+      finally { showLoading(false); }
+    });
+  }
+
   // ── Configuração de score ─────────────────
   async function loadScoreConfig() {
     const cfg = await Couple.getScoreConfig();
@@ -290,26 +316,6 @@ const Admin = (() => {
       finally { showLoading(false); }
     };
 
-    document.getElementById('btn-nuke-feed').onclick = async () => {
-      if (!confirm('Isso vai apagar TODOS os posts do feed de todos os casais.\n\nTem certeza absoluta?')) return;
-      if (!confirm('Última chance. Esta ação é irreversível.')) return;
-      showLoading(true);
-      try {
-        let total = 0;
-        // Firestore não permite query sem filtro em batch, então usamos get() e deletamos em chunks
-        let snap = await db.collection('feed').limit(500).get();
-        while (!snap.empty) {
-          const batch = db.batch();
-          snap.docs.forEach(doc => batch.delete(doc.ref));
-          await batch.commit();
-          total += snap.size;
-          if (snap.size < 500) break;
-          snap = await db.collection('feed').limit(500).get();
-        }
-        showToast(`Feed limpo. ${total} post(s) removido(s).`);
-      } catch(e) { showToast('Erro: ' + e.message); }
-      finally { showLoading(false); }
-    };
   }
 
   return {
