@@ -169,8 +169,8 @@
           <span>Início</span>
         </button>
         <button class="sidebar-btn" data-nav="movies">
-          <i class="fa-solid fa-film"></i>
-          <span>Filmes</span>
+          <i class="fa-solid fa-photo-film"></i>
+          <span>Catálogo</span>
         </button>
         <button class="sidebar-btn" data-nav="add-movie">
           <i class="fa-solid fa-circle-plus"></i>
@@ -246,8 +246,8 @@
 
           <div class="quick-actions">
             <button class="qa-btn" data-nav="movies">
-              <i class="fa-solid fa-film qa-icon"></i>
-              <span>Filmes</span>
+              <i class="fa-solid fa-photo-film qa-icon"></i>
+              <span>Catálogo</span>
             </button>
             <button class="qa-btn" data-nav="watching">
               <i class="fa-solid fa-play-circle qa-icon"></i>
@@ -276,23 +276,46 @@
         </div>
       </div>
 
-      <!-- ── FILMES ─────────────────────────── -->
+      <!-- ── CATÁLOGO ───────────────────────── -->
       <div id="view-movies" class="view">
         <div class="top-bar">
           <button class="btn-back" data-nav="feed"><i class="fa-solid fa-arrow-left"></i></button>
-          <h2>Filmes</h2>
-          <button class="btn-icon" data-nav="add-movie" title="Adicionar filme">
+          <h2>Catálogo</h2>
+          <button class="btn-icon" data-nav="add-movie" title="Adicionar conteúdo">
             <i class="fa-solid fa-plus"></i>
           </button>
         </div>
         <div class="movies-container">
           <div class="search-bar">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="movies-search" placeholder="Buscar filme..." />
+            <input type="text" id="movies-search" placeholder="Buscar..." />
           </div>
-          <div class="category-chips" id="category-chips">
-            <button class="chip active" data-cat="all">Todos</button>
+
+          <!-- Filtros organizados por seção -->
+          <div class="catalog-filters">
+            <div class="filter-section">
+              <span class="filter-label">Tipo</span>
+              <div class="filter-chips" id="type-chips">
+                <button class="chip active" data-type="all">Todos</button>
+                <button class="chip" data-type="movie"><i class="fa-solid fa-film"></i> Filme</button>
+                <button class="chip" data-type="series"><i class="fa-solid fa-tv"></i> Série</button>
+                <button class="chip" data-type="anime"><i class="fa-solid fa-star"></i> Anime</button>
+              </div>
+            </div>
+            <div class="filter-section">
+              <span class="filter-label">Gênero</span>
+              <div class="filter-chips" id="category-chips">
+                <button class="chip active" data-cat="all">Todos</button>
+              </div>
+            </div>
+            <div class="filter-section">
+              <span class="filter-label">Faixa etária</span>
+              <div class="filter-chips" id="age-chips">
+                <button class="chip active" data-age="all">Todas</button>
+              </div>
+            </div>
           </div>
+
           <div class="movies-grid" id="movies-grid"></div>
         </div>
       </div>
@@ -311,6 +334,7 @@
             <div>
               <h1 id="movie-detail-title">—</h1>
               <div class="movie-meta">
+                <span class="badge-type hidden" id="movie-detail-type"></span>
                 <span id="movie-detail-cat" class="movie-detail-cats">—</span>
                 <span class="badge-age" id="movie-detail-age">—</span>
               </div>
@@ -760,8 +784,8 @@
       <span class="nav-label">Início</span>
     </button>
     <button class="nav-btn" data-nav="movies">
-      <i class="fa-solid fa-film nav-icon"></i>
-      <span class="nav-label">Filmes</span>
+      <i class="fa-solid fa-photo-film nav-icon"></i>
+      <span class="nav-label">Catálogo</span>
     </button>
     <button class="nav-btn nav-btn-center" data-nav="add-movie">
       <span class="nav-icon-center"><i class="fa-solid fa-plus"></i></span>

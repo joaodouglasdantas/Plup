@@ -130,8 +130,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Carregar categorias e idades globalmente
-  Movies.onCategories(cats => { AppState.categories = cats; });
-  Movies.onAgeRatings(ages => { AppState.ageRatings = ages; });
+  Movies.onCategories(cats => {
+    AppState.categories = cats;
+    if (AppState.currentView === 'movies') renderCategoryChips();
+  });
+  Movies.onAgeRatings(ages => {
+    AppState.ageRatings = ages;
+    if (AppState.currentView === 'movies') renderAgeChips();
+  });
 });
 
 function clearListeners() {
@@ -365,30 +371,47 @@ function updateCoupleQuickCard(doc) {
   });
 }
 
-// ── FILMES ─────────────────────────────────────
+// ── CATÁLOGO ────────────────────────────────────
 let _moviesUnsub = null;
 let _moviesAll   = [];
 let _currentCat  = 'all';
+let _currentType = 'all';
+let _currentAge  = 'all';
+
+const _typeConfig = {
+  movie:  { label: 'Filme',  icon: 'fa-film', color: '#0077B6' },
+  series: { label: 'Série',  icon: 'fa-tv',   color: '#7B2FBE' },
+  anime:  { label: 'Anime',  icon: 'fa-star',  color: '#E76F51' },
+};
 
 function initMoviesView() {
-  _currentCat = 'all';
+  _currentCat  = 'all';
+  _currentType = 'all';
+  _currentAge  = 'all';
   renderCategoryChips();
-  loadMoviesGrid('all'); // listener persiste entre visitas — só refiltra se já ativo
+  renderAgeChips();
+  _bindTypeChips();
+  _startMoviesListener();
 
   const searchInput = document.getElementById('movies-search');
   let searchTimeout;
   searchInput.value = '';
   searchInput.oninput = () => {
     clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-      const q = searchInput.value.trim();
-      if (!q) {
-        loadMoviesGrid(_currentCat);
-      } else {
-        Movies.searchMovies(q).then(results => renderMoviesGrid(results));
-      }
-    }, 400);
+    searchTimeout = setTimeout(() => _applyFilters(), 350);
   };
+}
+
+function _bindTypeChips() {
+  const container = document.getElementById('type-chips');
+  container.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      _currentType = chip.dataset.type;
+      container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      _applyFilters();
+    });
+  });
 }
 
 function _renderIcon(icon) {
@@ -406,43 +429,69 @@ function renderCategoryChips() {
     return `<button class="chip ${_currentCat === c.id ? 'active' : ''}" data-cat="${c.id}">${dot} ${c.name}</button>`;
   }).join('');
   container.innerHTML = allChip + catChips;
-
   container.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
       _currentCat = chip.dataset.cat;
       container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
       chip.classList.add('active');
-      loadMoviesGrid(_currentCat);
+      _applyFilters();
     });
   });
 }
 
+function renderAgeChips() {
+  const container = document.getElementById('age-chips');
+  if (!container) return;
+  const ages = AppState.ageRatings || [];
+  const allChip = `<button class="chip ${_currentAge === 'all' ? 'active' : ''}" data-age="all">Todas</button>`;
+  const ageChips = ages.map(a =>
+    `<button class="chip ${_currentAge === a.id ? 'active' : ''}" data-age="${a.id}"
+      style="${a.color ? `--chip-active-bg:${a.color}` : ''}">${a.label}</button>`
+  ).join('');
+  container.innerHTML = allChip + ageChips;
+  container.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      _currentAge = chip.dataset.age;
+      container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      _applyFilters();
+    });
+  });
+}
+
+function _applyFilters() {
+  const q = (document.getElementById('movies-search')?.value || '').trim().toLowerCase();
+  let filtered = _moviesAll;
+
+  if (_currentType !== 'all') filtered = filtered.filter(m => (m.type || 'movie') === _currentType);
+  if (_currentCat  !== 'all') filtered = filtered.filter(m => {
+    const ids = m.categoryIds || (m.categoryId ? [m.categoryId] : []);
+    return ids.includes(_currentCat);
+  });
+  if (_currentAge !== 'all') filtered = filtered.filter(m => m.ageRatingId === _currentAge);
+  if (q) filtered = filtered.filter(m => m.title?.toLowerCase().includes(q));
+
+  renderMoviesGrid(filtered);
+}
+
+function _startMoviesListener() {
+  if (_moviesUnsub) { _applyFilters(); return; }
+  _moviesUnsub = Movies.onMovies(movies => {
+    _moviesAll = movies;
+    _applyFilters();
+  });
+}
+
+// kept for backward compat (called from elsewhere)
 function loadMoviesGrid(catId) {
-  _currentCat = catId;
-  if (_moviesUnsub) {
-    // Listener já ativo — só refiltra client-side
-    const filtered = catId === 'all' ? _moviesAll : _moviesAll.filter(m => {
-      const ids = m.categoryIds || (m.categoryId ? [m.categoryId] : []);
-      return ids.includes(catId);
-    });
-    renderMoviesGrid(filtered);
-  } else {
-    // Primeiro acesso — abre listener para TODOS os filmes
-    _moviesUnsub = Movies.onMovies(movies => {
-      _moviesAll = movies;
-      const filtered = _currentCat === 'all' ? movies : movies.filter(m => {
-        const ids = m.categoryIds || (m.categoryId ? [m.categoryId] : []);
-        return ids.includes(_currentCat);
-      });
-      renderMoviesGrid(filtered);
-    });
-  }
+  _currentCat = catId || 'all';
+  _startMoviesListener();
 }
 
 function renderMoviesGrid(movies) {
   const grid = document.getElementById('movies-grid');
   if (!movies.length) {
-    grid.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Nenhum filme encontrado</p>';
+    grid.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Nenhum conteúdo encontrado</p>';
     return;
   }
   grid.innerHTML = movies.map(m => {
@@ -451,6 +500,12 @@ function renderMoviesGrid(movies) {
       .filter(c => ids.includes(c.id))
       .map(c => `<span class="badge-cat-card" ${c.color ? `style="background:${c.color};color:#fff"` : ''}>${c.name}</span>`)
       .join('');
+    const age = AppState.ageRatings?.find(a => a.id === m.ageRatingId);
+    const ageBadge = age
+      ? `<span class="badge-age-card" style="background:${age.color||'#0077B6'};color:#fff">${age.label}</span>`
+      : '';
+    const tc = _typeConfig[m.type || 'movie'];
+    const typeBadge = `<span class="badge-type-card" style="background:${tc.color}"><i class="fa-solid ${tc.icon}"></i> ${tc.label}</span>`;
     return `
       <div class="movie-card" onclick="openMovieDetail('${m.id}')">
         ${m.coverUrl
@@ -458,7 +513,9 @@ function renderMoviesGrid(movies) {
           : `<div class="movie-card-cover"></div>`}
         <div class="movie-card-info">
           <div class="movie-card-title">${m.title}</div>
-          <div class="movie-card-cat" style="display:flex;flex-wrap:wrap;gap:4px">${catBadges}</div>
+          <div class="movie-card-cat" style="display:flex;flex-wrap:wrap;gap:4px">
+            ${typeBadge}${catBadges}${ageBadge}
+          </div>
         </div>
       </div>
     `;
@@ -505,6 +562,16 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
     ageEl.style.background = age?.color || '';
     ageEl.style.color = age?.color ? '#fff' : '';
     ageEl.style.display = age?.label ? '' : 'none';
+
+    // Badge de tipo no detalhe
+    const typeEl = document.getElementById('movie-detail-type');
+    if (typeEl) {
+      const tc = _typeConfig[movie.type || 'movie'];
+      typeEl.innerHTML = `<i class="fa-solid ${tc.icon}"></i> ${tc.label}`;
+      typeEl.style.background = tc.color;
+      typeEl.style.color = '#fff';
+      typeEl.classList.remove('hidden');
+    }
 
     const coupleId  = AppState.coupleDoc?.id;
     const myUid     = AppState.user?.uid;
