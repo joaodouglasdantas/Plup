@@ -100,6 +100,55 @@ textarea { resize: vertical; }
 .wave3 { background: var(--blue);   bottom: -100px; animation-duration: 13s; }
 
 /* ════════════════════════════════════════════════
+   CINEMA SPOTLIGHTS (splash)
+════════════════════════════════════════════════ */
+.spotlight {
+  position: absolute;
+  bottom: 0;
+  height: 100%;
+  pointer-events: none;
+}
+.spotlight1 {
+  left: 4%;
+  width: 28%;
+  background: linear-gradient(to top,
+    rgba(0,180,216,0.55) 0%,
+    rgba(0,180,216,0.18) 55%,
+    transparent 100%);
+  clip-path: polygon(22% 100%, 78% 100%, 100% 0%, 0% 0%);
+  animation: spotSway1 9s ease-in-out infinite;
+}
+.spotlight2 {
+  left: 50%;
+  transform: translateX(-50%);
+  width: 22%;
+  background: linear-gradient(to top,
+    rgba(100,220,255,0.45) 0%,
+    rgba(100,220,255,0.12) 55%,
+    transparent 100%);
+  clip-path: polygon(20% 100%, 80% 100%, 100% 0%, 0% 0%);
+  animation: spotSway2 12s ease-in-out infinite;
+}
+.spotlight3 {
+  right: 4%;
+  width: 28%;
+  background: linear-gradient(to top,
+    rgba(0,180,216,0.55) 0%,
+    rgba(0,180,216,0.18) 55%,
+    transparent 100%);
+  clip-path: polygon(22% 100%, 78% 100%, 100% 0%, 0% 0%);
+  animation: spotSway1 10s 2s ease-in-out infinite alternate;
+}
+@keyframes spotSway1 {
+  0%, 100% { clip-path: polygon(18% 100%, 78% 100%, 88% 0%, 8%  0%); }
+  50%       { clip-path: polygon(26% 100%, 84% 100%, 96% 0%, 16% 0%); }
+}
+@keyframes spotSway2 {
+  0%, 100% { clip-path: polygon(18% 100%, 82% 100%, 94% 0%, 6%  0%); }
+  50%       { clip-path: polygon(22% 100%, 78% 100%, 90% 0%, 10% 0%); }
+}
+
+/* ════════════════════════════════════════════════
    SPLASH
 ════════════════════════════════════════════════ */
 #view-splash {
