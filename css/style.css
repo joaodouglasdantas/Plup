@@ -851,6 +851,7 @@ textarea { resize: vertical; }
 ════════════════════════════════════════════════ */
 #view-profile { overflow-y: auto; }
 .profile-hero {
+  position: relative;
   background: linear-gradient(160deg, var(--navy), var(--blue-d), var(--blue-m));
   padding: max(40px, calc(env(safe-area-inset-top) + 20px)) 20px 30px;
   display: flex; flex-direction: column; align-items: center; gap: 12px;

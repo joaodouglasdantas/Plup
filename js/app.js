@@ -1682,6 +1682,21 @@ async function initProfileView(coupleId, isOwn = true) {
   }
   _resetProfileView(isOwn);
   if (!coupleId) return;
+
+  // Setup tab listeners ANTES do fetch assíncrono para garantir que sempre funcionem
+  document.querySelectorAll('.profile-tab').forEach(tab => {
+    const fresh = tab.cloneNode(true);
+    tab.replaceWith(fresh);
+  });
+  document.querySelectorAll('.profile-tab').forEach((tab, i) => {
+    tab.classList.toggle('active', i === 0);
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      loadProfileTab(_activeProfileId, tab.dataset.ptab, _activeProfileIsOwn);
+    });
+  });
+
   showLoading(true);
   try {
     const couple = await Couple.getCoupleDoc(coupleId);
@@ -1716,21 +1731,7 @@ async function initProfileView(coupleId, isOwn = true) {
     backBtn.classList.toggle('hidden', isOwn);
     backBtn.onclick = () => navigateTo(AppState.prevView || 'feed');
 
-    // Abas — clonar para remover listeners antigos acumulados de visitas anteriores
-    document.querySelectorAll('.profile-tab').forEach(tab => {
-      const fresh = tab.cloneNode(true);
-      tab.replaceWith(fresh);
-    });
-    document.querySelectorAll('.profile-tab').forEach((tab, i) => {
-      tab.classList.toggle('active', i === 0);
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        // Usa sempre o perfil ativo no momento do clique, não o da closure
-        loadProfileTab(_activeProfileId, tab.dataset.ptab, _activeProfileIsOwn);
-      });
-    });
-    // Usa closure coupleId/isOwn aqui — é o valor certo desta chamada (gen já verificado)
+    // Carregar aba inicial
     loadProfileTab(coupleId, 'watched', isOwn);
 
     // Ações (own-actions/other-actions já foram alternados pelo _resetProfileView)
