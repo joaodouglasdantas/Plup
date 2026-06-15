@@ -550,19 +550,6 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
     coverEl.style.objectPosition = movie.coverPosition || '50% 50%';
     coverEl.style.display = movie.coverUrl ? '' : 'none';
 
-    const age = AppState.ageRatings.find(a => a.id === movie.ageRatingId);
-    const catEl = document.getElementById('movie-detail-cat');
-    const catIds = movie.categoryIds || (movie.categoryId ? [movie.categoryId] : []);
-    const matchedCats = AppState.categories.filter(c => catIds.includes(c.id));
-    catEl.innerHTML = matchedCats.length
-      ? matchedCats.map(c => `<span class="badge-cat" ${c.color ? `style="background:${c.color};color:#fff"` : ''}>${c.name}</span>`).join('')
-      : '—';
-    const ageEl = document.getElementById('movie-detail-age');
-    ageEl.textContent = age?.label || '';
-    ageEl.style.background = age?.color || '';
-    ageEl.style.color = age?.color ? '#fff' : '';
-    ageEl.style.display = age?.label ? '' : 'none';
-
     // Badge de tipo no detalhe
     const typeEl = document.getElementById('movie-detail-type');
     if (typeEl) {
@@ -571,6 +558,67 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
       typeEl.style.background = tc.color;
       typeEl.style.color = '#fff';
       typeEl.classList.remove('hidden');
+    }
+
+    const age = AppState.ageRatings.find(a => a.id === movie.ageRatingId);
+    const catEl = document.getElementById('movie-detail-cat');
+    const catIds = movie.categoryIds || (movie.categoryId ? [movie.categoryId] : []);
+    const matchedCats = AppState.categories.filter(c => catIds.includes(c.id));
+    const hasCats = matchedCats.length > 0;
+    catEl.innerHTML = hasCats
+      ? matchedCats.map(c => `<span class="badge-cat" ${c.color ? `style="background:${c.color};color:#fff"` : ''}>${c.name}</span>`).join('')
+      : '';
+
+    const ageEl = document.getElementById('movie-detail-age');
+    const hasAge = !!age?.label;
+    if (hasAge) {
+      ageEl.textContent = age.label;
+      ageEl.style.background = age.color || '';
+      ageEl.style.color = age.color ? '#fff' : '';
+      ageEl.classList.remove('hidden');
+    } else {
+      ageEl.classList.add('hidden');
+    }
+
+    // Separadores entre badges
+    const hasType = true; // type badge sempre visível
+    document.getElementById('meta-sep-1')?.classList.toggle('hidden', !(hasType && hasCats));
+    document.getElementById('meta-sep-2')?.classList.toggle('hidden', !(hasCats && hasAge));
+
+    // Info extra: temporadas / episódios com dropdown
+    const extraEl = document.getElementById('movie-detail-extra');
+    if (extraEl) {
+      const type = movie.type || 'movie';
+      let extraHtml = '';
+      if (type === 'series' || (type === 'anime' && movie.animeFormat !== 'sequential')) {
+        const seasons = movie.seasons || [];
+        const totalSeasons = movie.totalSeasons || seasons.length;
+        if (totalSeasons) {
+          const totalEps = seasons.reduce((acc, s) => acc + (parseInt(s.episodes) || 0), 0);
+          const summary = `<i class="fa-solid fa-layer-group"></i> ${totalSeasons} temporada${totalSeasons > 1 ? 's' : ''}` +
+            (totalEps ? `<span class="extra-dot">·</span><i class="fa-solid fa-play"></i> ${totalEps} episódios` : '');
+          const seasonRows = seasons.map(s => `
+            <div class="season-row">
+              <span class="season-row-name">${s.name || `Temporada ${s.number}`}</span>
+              ${s.episodes ? `<span class="season-row-eps">${s.episodes} ep${s.episodes > 1 ? 's' : ''}</span>` : ''}
+            </div>`).join('');
+          extraHtml = `
+            <details class="seasons-dropdown">
+              <summary>${summary} <i class="fa-solid fa-chevron-down seasons-chevron"></i></summary>
+              ${seasonRows ? `<div class="season-list">${seasonRows}</div>` : ''}
+            </details>`;
+        }
+      } else if (type === 'anime' && movie.animeFormat === 'sequential') {
+        if (movie.totalEpisodes) {
+          extraHtml = `<span><i class="fa-solid fa-play"></i> ${movie.totalEpisodes} episódio${movie.totalEpisodes > 1 ? 's' : ''}</span>`;
+        }
+      }
+      if (extraHtml) {
+        extraEl.innerHTML = extraHtml;
+        extraEl.classList.remove('hidden');
+      } else {
+        extraEl.classList.add('hidden');
+      }
     }
 
     const coupleId  = AppState.coupleDoc?.id;

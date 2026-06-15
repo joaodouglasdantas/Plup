@@ -302,12 +302,14 @@
                 <button class="chip" data-type="anime"><i class="fa-solid fa-star"></i> Anime</button>
               </div>
             </div>
+            <div class="filter-divider"></div>
             <div class="filter-section">
               <span class="filter-label">Gênero</span>
               <div class="filter-chips" id="category-chips">
                 <button class="chip active" data-cat="all">Todos</button>
               </div>
             </div>
+            <div class="filter-divider"></div>
             <div class="filter-section">
               <span class="filter-label">Faixa etária</span>
               <div class="filter-chips" id="age-chips">
@@ -335,8 +337,10 @@
               <h1 id="movie-detail-title">—</h1>
               <div class="movie-meta">
                 <span class="badge-type hidden" id="movie-detail-type"></span>
+                <span class="meta-sep hidden" id="meta-sep-1">·</span>
                 <span id="movie-detail-cat" class="movie-detail-cats">—</span>
-                <span class="badge-age" id="movie-detail-age">—</span>
+                <span class="meta-sep hidden" id="meta-sep-2">·</span>
+                <span class="badge-age hidden" id="movie-detail-age">—</span>
               </div>
             </div>
             <div class="movie-detail-actions">
@@ -352,6 +356,7 @@
             </div>
           </div>
           <p id="movie-detail-desc" class="movie-desc">—</p>
+          <div id="movie-detail-extra" class="movie-extra-info hidden"></div>
           <div class="rating-section">
             <h3>Avaliação do casal</h3>
             <div class="stars-input" id="stars-input">
