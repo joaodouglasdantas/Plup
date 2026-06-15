@@ -529,7 +529,14 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
 
   // Mostrar/ocultar ações conforme contexto
   document.querySelector('.movie-detail-actions').style.display = readOnly ? 'none' : '';
-  document.querySelector('.rating-section').style.display       = readOnly ? 'none' : '';
+  // rating-section: sempre visível — em readOnly mostra notas do casal dono
+  document.querySelector('.rating-section').style.display = '';
+  // Controles interativos só aparecem quando não é readOnly
+  ['stars-input','rating-display','btn-rate-movie','btn-mark-watching','btn-mark-watched'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = readOnly ? 'none' : '';
+  });
+  document.getElementById('couple-ratings-info').textContent = '';
 
   showLoading(true);
   try {
@@ -658,6 +665,31 @@ async function openMovieDetail(movieId, readOnly = false, skipNav = false) {
         starsInput.style.opacity = '0.35';
         rateBtn.disabled = true;
         ratingDisplay.textContent = 'Marque como assistido para avaliar';
+      }
+    }
+
+    // Notas do casal dono — visíveis em readOnly
+    if (readOnly && movie.addedByCoupleId) {
+      const ownerCouple = await Couple.getCoupleDoc(movie.addedByCoupleId);
+      if (ownerCouple) {
+        const [r1, r2, ou1, ou2] = await Promise.all([
+          Movies.getPartnerRating(ownerCouple.id, movieId, ownerCouple.user1),
+          Movies.getPartnerRating(ownerCouple.id, movieId, ownerCouple.user2),
+          Auth.fetchUserDoc(ownerCouple.user1),
+          Auth.fetchUserDoc(ownerCouple.user2),
+        ]);
+        const star = '<i class="fa-solid fa-star" style="font-size:.8em;margin-left:2px;color:var(--warning)"></i>';
+        const n1 = ou1?.name || '?';
+        const n2 = ou2?.name || '?';
+        const t1 = r1 ? `${n1}: ${r1}${star}` : `${n1}: sem nota`;
+        const t2 = r2 ? `${n2}: ${r2}${star}` : `${n2}: sem nota`;
+        const avg = (r1 && r2) ? ` &nbsp;|&nbsp; Média: ${((r1 + r2) / 2).toFixed(1)}${star}` : '';
+        const ratingsEl = document.getElementById('couple-ratings-info');
+        if (r1 || r2) {
+          ratingsEl.innerHTML = t1 + ' &nbsp;|&nbsp; ' + t2 + avg;
+        } else {
+          ratingsEl.textContent = 'Este casal ainda não avaliou.';
+        }
       }
     }
 
