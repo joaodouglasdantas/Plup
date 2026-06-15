@@ -81,7 +81,7 @@ const Feed = (() => {
   }
 
   // ── Renderizar card de feed ───────────────
-  async function renderFeedCard(event, coupleDoc, categoriesMap) {
+  async function renderFeedCard(event, coupleDoc, categoriesMap, myCoupleId) {
     const card = document.createElement('div');
     card.className = 'feed-card';
 
@@ -126,6 +126,11 @@ const Feed = (() => {
       ? `<img class="feed-card-cover" src="${event.coverUrl}" alt="${event.movieTitle}" loading="lazy" />`
       : `<div class="feed-card-cover movie-card-cover"></div>`;
 
+    const isOwn = myCoupleId && event.coupleId === myCoupleId;
+    const deleteBtn = isOwn
+      ? `<button class="feed-card-delete-btn" title="Excluir post"><i class="fa-solid fa-trash"></i></button>`
+      : '';
+
     card.innerHTML = `
       <div class="feed-card-header">
         <div class="feed-couple-avatars">
@@ -136,6 +141,7 @@ const Feed = (() => {
           <div class="feed-card-couple-name">${names}</div>
           <div class="feed-card-time">${time}</div>
         </div>
+        ${deleteBtn}
       </div>
       ${coverHtml}
       <div class="feed-card-body">
@@ -144,6 +150,14 @@ const Feed = (() => {
         ${starsHtml}
       </div>
     `;
+
+    if (isOwn) {
+      card.querySelector('.feed-card-delete-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm('Excluir este post do feed?')) return;
+        await db.collection('feed').doc(event.id).delete();
+      });
+    }
 
     if (event.movieId) {
       card.style.cursor = 'pointer';

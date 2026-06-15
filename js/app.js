@@ -331,7 +331,7 @@ async function initFeedView() {
           }
         }
 
-        const card = await Feed.renderFeedCard(ev, evCouple, AppState.categories);
+        const card = await Feed.renderFeedCard(ev, evCouple, AppState.categories, coupleId);
         if (gen !== _feedRenderGen) return;
         container.appendChild(card);
       }

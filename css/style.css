@@ -534,6 +534,15 @@ textarea { resize: vertical; }
 .feed-card-title { font-weight: 800; font-size: 0.95rem; color: var(--navy); margin-bottom: 4px; }
 .feed-card-action { font-size: 0.8rem; color: var(--blue); margin-bottom: 6px; }
 .feed-card-stars { font-size: 1.1rem; color: var(--warning); }
+.feed-card-delete-btn {
+  width: 30px; height: 30px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gray-4); font-size: 0.8rem;
+  opacity: 0; transition: var(--transition);
+  flex-shrink: 0;
+}
+.feed-card-delete-btn:hover { background: #fee2e2; color: #dc2626; }
+.feed-card:hover .feed-card-delete-btn { opacity: 1; }
 .feed-card-stars .empty { color: var(--gray-3); }
 
 .feed-empty {
