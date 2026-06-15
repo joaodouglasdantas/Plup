@@ -1668,18 +1668,23 @@ function _resetProfileView(isOwn) {
   document.getElementById('profile-other-actions').classList.toggle('hidden', isOwn);
 }
 
+let _profileInitGen = 0;
+
 async function initProfileView(coupleId, isOwn = true) {
+  const gen = ++_profileInitGen;
   _resetProfileView(isOwn);
   if (!coupleId) return;
   showLoading(true);
   try {
     const couple = await Couple.getCoupleDoc(coupleId);
-    if (!couple) return;
+    if (!couple || gen !== _profileInitGen) return;
 
     const [u1, u2] = await Promise.all([
       Auth.fetchUserDoc(couple.user1),
       Auth.fetchUserDoc(couple.user2)
     ]);
+
+    if (gen !== _profileInitGen) return;
 
     document.getElementById('profile-couple-names').textContent = `${u1?.name || '?'} & ${u2?.name || '?'}`;
 
@@ -1711,6 +1716,7 @@ async function initProfileView(coupleId, isOwn = true) {
     document.querySelectorAll('.profile-tab').forEach((tab, i) => {
       tab.classList.toggle('active', i === 0);
       tab.addEventListener('click', () => {
+        if (_profileInitGen !== gen) return; // ignora se perfil mudou
         document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         loadProfileTab(coupleId, tab.dataset.ptab, isOwn);
