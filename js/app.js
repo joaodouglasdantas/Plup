@@ -1652,6 +1652,10 @@ function buildListMovieItem(movie, onRemove) {
 }
 
 // ── PERFIL ─────────────────────────────────────
+// Perfil ativo — os listeners de tab sempre leem daqui
+let _activeProfileId   = null;
+let _activeProfileIsOwn = true;
+
 function _resetProfileView(isOwn) {
   document.getElementById('profile-couple-names').textContent = '—';
   document.getElementById('profile-couple-since').textContent = 'Casal desde —';
@@ -1672,6 +1676,8 @@ let _profileInitGen = 0;
 
 async function initProfileView(coupleId, isOwn = true) {
   const gen = ++_profileInitGen;
+  _activeProfileId    = coupleId;
+  _activeProfileIsOwn = isOwn;
   _resetProfileView(isOwn);
   if (!coupleId) return;
   showLoading(true);
@@ -1718,10 +1724,11 @@ async function initProfileView(coupleId, isOwn = true) {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        loadProfileTab(coupleId, tab.dataset.ptab, isOwn);
+        // Usa sempre o perfil ativo no momento do clique, não o da closure
+        loadProfileTab(_activeProfileId, tab.dataset.ptab, _activeProfileIsOwn);
       });
     });
-    loadProfileTab(coupleId, 'watched', isOwn);
+    loadProfileTab(_activeProfileId, 'watched', _activeProfileIsOwn);
 
     // Ações (own-actions/other-actions já foram alternados pelo _resetProfileView)
     if (!isOwn) {
