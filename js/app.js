@@ -1676,8 +1676,10 @@ let _profileInitGen = 0;
 
 async function initProfileView(coupleId, isOwn = true) {
   const gen = ++_profileInitGen;
-  _activeProfileId    = coupleId;
-  _activeProfileIsOwn = isOwn;
+  if (coupleId) {
+    _activeProfileId    = coupleId;
+    _activeProfileIsOwn = isOwn;
+  }
   _resetProfileView(isOwn);
   if (!coupleId) return;
   showLoading(true);
@@ -1728,7 +1730,8 @@ async function initProfileView(coupleId, isOwn = true) {
         loadProfileTab(_activeProfileId, tab.dataset.ptab, _activeProfileIsOwn);
       });
     });
-    loadProfileTab(_activeProfileId, 'watched', _activeProfileIsOwn);
+    // Usa closure coupleId/isOwn aqui — é o valor certo desta chamada (gen já verificado)
+    loadProfileTab(coupleId, 'watched', isOwn);
 
     // Ações (own-actions/other-actions já foram alternados pelo _resetProfileView)
     if (!isOwn) {
@@ -1765,6 +1768,7 @@ async function initProfileView(coupleId, isOwn = true) {
 let _profileTabGen = 0;
 
 async function loadProfileTab(coupleId, tab, isOwn = true) {
+  if (!coupleId) return;
   const gen = ++_profileTabGen;
   const container = document.getElementById('profile-tab-content');
   container.innerHTML = '<p class="empty-text">Carregando...</p>';
@@ -1800,8 +1804,8 @@ async function loadProfileTab(coupleId, tab, isOwn = true) {
       container.appendChild(img);
     }
   } catch(e) {
-    console.error('loadProfileTab:', e);
-    container.innerHTML = '<p class="empty-text" style="grid-column:1/-1">Erro ao carregar. Verifique os índices do Firestore no console.</p>';
+    console.error('loadProfileTab error — coupleId:', coupleId, 'tab:', tab, e);
+    container.innerHTML = `<p class="empty-text" style="grid-column:1/-1">Erro ao carregar: ${e.message}</p>`;
   }
 }
 
