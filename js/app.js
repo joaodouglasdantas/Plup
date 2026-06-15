@@ -1716,7 +1716,6 @@ async function initProfileView(coupleId, isOwn = true) {
     document.querySelectorAll('.profile-tab').forEach((tab, i) => {
       tab.classList.toggle('active', i === 0);
       tab.addEventListener('click', () => {
-        if (_profileInitGen !== gen) return; // ignora se perfil mudou
         document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         loadProfileTab(coupleId, tab.dataset.ptab, isOwn);
